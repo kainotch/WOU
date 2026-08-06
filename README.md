@@ -199,12 +199,3 @@ Licensed under GPL-3.0
 💙 Built with passion by Notch\
 ⭐ Star the repo if WOU impressed you\
 🚀 Help it reach more people
-
-## 🔗 Star History
-
-
-  https://star-history.com/notch/wou&Date">
-    
-      https://api.star-history.com/svg?repos=notch/wou&type=Date&theme=dark" />
-      https://api.star-history.com/svg?repos=notch/wou&type=Date" />
-      https://api.star-history.com/svg?repos=notch/wou&type=Date" />
