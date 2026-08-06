@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="https://github.com/user-attachments/assets/YOUR-NEW-LINK-HERE" width="110" />
+  <img src="screenshots/Aizen.jpg" width="110" />
 </div>
 
 # 🌌 WOU
