@@ -24,6 +24,21 @@ __        _____  _   _
 
 ## 📥 Download Now
 
+<div align="center">
+
+  <!-- Obtainium Button -->
+  <a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/notch/WOU">
+    <img src="https://raw.githubusercontent.com/ImranR98/Obtainium/main/assets/graphics/badge_obtainium.png" height="50" alt="Get WOU on Obtainium">
+  </a>
+  
+  &nbsp;&nbsp;&nbsp;&nbsp; <!-- This adds a little space between the buttons -->
+
+  <!-- GitHub Release Button -->
+  <a href="https://github.com/notch/WOU/releases/latest">
+    <img src="https://img.shields.io/badge/Download_Latest-GitHub-18181B?style=for-the-badge&logo=github&logoColor=white" height="50" alt="Get WOU on GitHub">
+  </a>
+
+</div>
 
 ## 🚀 Why WOU?
 
