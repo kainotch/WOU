@@ -1,6 +1,3 @@
-https://raw.githubusercontent.com/notch/WOU/main/fastlane/metadata/android/en-US/images/icon.png" width="110" />
-
-
 
 # 🌌 WOU
 
