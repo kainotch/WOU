@@ -4,15 +4,12 @@ https://raw.githubusercontent.com/notch/WOU/main/fastlane/metadata/android/en-US
 
 # 🌌 WOU
 
-
 ██╗    ██╗ ██████╗ ██╗   ██╗
 ██║    ██║██╔═══██╗██║   ██║
 ██║ █╗ ██║██║   ██║██║   ██║
 ██║███╗██║██║   ██║██║   ██║
 ╚███╔███╔╝╚██████╔╝╚██████╔╝
- ╚══╝╚══╝  ╚═════╝  ╚═════╝ 
-
-
+ ╚══╝╚══╝  ╚═════╝  ╚═════╝
 
 
 ### 🎧 The YouTube Music app you always wanted
