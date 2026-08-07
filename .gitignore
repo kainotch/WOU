@@ -39,3 +39,5 @@ captures/
 *.keystore
 *.properties
 !gradle.properties
+ 
+/app/arm64/ 
