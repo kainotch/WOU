@@ -1,0 +1,22 @@
+/*
+ * wou - by Notch
+ * Notch
+ * Licensed Under GPL-3.0
+ */
+
+
+
+package com.notch.yt.playback.queues
+
+import androidx.media3.common.MediaItem
+import com.notch.yt.models.MediaMetadata
+
+object EmptyQueue : Queue {
+    override val preloadItem: MediaMetadata? = null
+
+    override suspend fun getInitialStatus() = Queue.Status(null, emptyList(), -1)
+
+    override fun hasNextPage() = false
+
+    override suspend fun nextPage() = emptyList<MediaItem>()
+}
