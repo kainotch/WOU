@@ -161,7 +161,6 @@ fun BottomSheetPage(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
                     .padding(bottom = 32.dp) // Extra bottom padding for navigation bar
             ) {
                 state.content(this)

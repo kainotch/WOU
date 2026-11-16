@@ -140,12 +140,14 @@ fun WouJamSheet(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 10.dp, vertical = 8.dp)
+            .padding(vertical = 8.dp)
             .padding(bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding())
     ) {
         // Top Header
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
@@ -211,7 +213,7 @@ fun WouJamSheet(
                     color = MaterialTheme.colorScheme.errorContainer,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(bottom = 12.dp)
+                        .padding(horizontal = 14.dp, vertical = 6.dp)
                 ) {
                     Text(
                         text = errorMsg,
@@ -247,7 +249,9 @@ fun WouJamSheet(
                         },
                         singleLine = true,
                         shape = RoundedCornerShape(16.dp),
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 14.dp),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = MaterialTheme.colorScheme.primary,
                             unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
@@ -262,7 +266,9 @@ fun WouJamSheet(
                         colors = CardDefaults.cardColors(
                             containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
                         ),
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 14.dp)
                     ) {
                         Column(
                             modifier = Modifier.padding(16.dp),
@@ -339,7 +345,9 @@ fun WouJamSheet(
                 // Divider OR
                 item {
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 14.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         HorizontalDivider(modifier = Modifier.weight(1f))
@@ -360,7 +368,9 @@ fun WouJamSheet(
                         colors = CardDefaults.cardColors(
                             containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
                         ),
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 14.dp)
                     ) {
                         Column(
                             modifier = Modifier.padding(16.dp),
@@ -458,7 +468,9 @@ fun WouJamSheet(
                         colors = CardDefaults.cardColors(
                             containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
                         ),
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 14.dp)
                     ) {
                         Column(
                             modifier = Modifier
@@ -547,7 +559,7 @@ fun WouJamSheet(
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp)
+                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 4.dp)
                             )
                             MediaMetadataListItem(
                                 mediaMetadata = track.toMediaMetadata(),
@@ -580,7 +592,7 @@ fun WouJamSheet(
                         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(top = 10.dp)
+                            .padding(horizontal = 14.dp, vertical = 4.dp)
                     ) {
                         Row(
                             modifier = Modifier
@@ -645,7 +657,7 @@ fun WouJamSheet(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 4.dp, vertical = 10.dp),
+                            .padding(horizontal = 14.dp, vertical = 6.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
@@ -682,7 +694,7 @@ fun WouJamSheet(
                             color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f),
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 4.dp, vertical = 4.dp)
+                                .padding(horizontal = 14.dp, vertical = 4.dp)
                         ) {
                             Text(
                                 text = "Queue is empty. Songs added to queue will sync here for everyone.",
@@ -768,7 +780,7 @@ fun WouJamSheet(
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = 8.dp)
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp)
                     )
                 }
 
@@ -776,7 +788,7 @@ fun WouJamSheet(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 4.dp),
+                            .padding(horizontal = 14.dp, vertical = 4.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
@@ -847,6 +859,7 @@ fun WouJamSheet(
                         },
                         modifier = Modifier
                             .fillMaxWidth()
+                            .padding(horizontal = 14.dp, vertical = 8.dp)
                             .height(48.dp),
                         shape = RoundedCornerShape(14.dp),
                         colors = ButtonDefaults.buttonColors(
