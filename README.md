@@ -1,211 +1,54 @@
-<div align="center">
-  <img src="screenshots/Aizen.jpg" width="110" />
-</div>
+# WOU
 
-# 🌌 WOU
+An ad-free Android music player for YouTube Music, built because the official app locks basic things like background playback behind a paywall and keeps getting heavier with every update.
 
-<div align="center">
+## Getting the app
 
-<pre>
-__        _____  _   _ 
-\ \      / / _ \| | | |
- \ \ /\ / / | | | | | |
-  \ V  V /| |_| | |_| |
-   \_/\_/  \___/ \___/ 
-</pre>
+Download the latest pre-built APK from the [Releases](https://github.com/kainotch/WOU/releases/latest) page.
 
-</div>
+If you use [Obtainium](https://github.com/ImranR98/Obtainium) to track updates, add `https://github.com/kainotch/WOU` directly to install and update builds automatically.
 
-### 🎧 The YouTube Music app you always wanted
+## What it does
 
-🚫 No Ads • 💰 No Subscription • ⚡ Full Control  
+- Plays music in the background and with the screen off, with no ads or subscription prompts.
+- Fetches real-time synced lyrics through LRCLIB and Kugou, with word-by-word timing and translation support.
+- Caches tracks locally so songs you have already played load instantly, and lets you download playlists or albums for offline listening.
+- Audio engine options: gapless playback, crossfade, silence skipping, and volume normalization (EBU R128).
+- Clean Material You interface that adapts its palette to the current album artwork or system colors.
+- Search with direct shortcuts for music and podcasts, keeping track of songs you have actually clicked on rather than filling the screen with old text queries.
+- Optional YouTube account login to import your existing library, likes, and playlists.
+- Discord Rich Presence integration to show what track you are currently playing.
 
-## 📥 Download Now
+## Building from source
 
-<div align="center">
+Requirements:
+- JDK 17
+- Android SDK 34 or higher
 
-  <!-- Obtainium Button -->
-  <a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/kainotch/WOU">
-    <img src="https://raw.githubusercontent.com/ImranR98/Obtainium/main/assets/graphics/badge_obtainium.png" height="50" alt="Get WOU on Obtainium">
-  </a>
-  
-  &nbsp;&nbsp;&nbsp;&nbsp; <!-- This adds a little space between the buttons -->
-
-  <!-- GitHub Release Button -->
-  <a href="https://github.com/kainotch/WOU/releases/latest">
-    <img src="https://img.shields.io/badge/Download_Latest-GitHub-18181B?style=for-the-badge&logo=github&logoColor=white" height="50" alt="Get WOU on GitHub">
-  </a>
-
-</div>
-
-## 🚀 Why WOU?
-
-WOU is not just another music player — it's a **complete reimagination of YouTube Music**.
-
-* ⚡ **Faster** than the official app
-* 🎵 Built for audiophiles & power users
-* 📦 True offline-first experience
-* 🎨 Stunning **Material You** interface
-
-> 💡 This is YouTube Music — *but unlocked*
-
----
-
-## 🎯 Highlight Feature
-
-### 🎤 Real-Time Synced Lyrics
-
-Experience lyrics like never before:
-
-- Word-by-word sync  
-- Smooth animations  
-- Translation support  
-- Fully immersive playback  
-
----
-
-## 📸 Preview
-
-
-<div align="center">
-
-<img src="screenshots/Home.png" width="140"/>
-<img src="screenshots/Now Playing.png" width="140"/>
-<img src="screenshots/History.png" width="140"/>
-<img src="screenshots/Stats.png" width="140"/>
-
-<br/>
-
-<img src="screenshots/Library.png" width="140"/>
-<img src="screenshots/Settings.png" width="140"/>
-<img src="screenshots/About.png" width="140"/>
-
-</div>
-
-
-
-## ✨ Features
-
-### 🎵 Core Experience
-- Ad-Free Playback  
-- Full Library Sync  
-- Offline Caching (Encrypted)  
-- Background Playback  
-
-### 🔊 Audio Engine
-- Gapless Playback  
-- Crossfade Engine  
-- Silence Skipping  
-- Loudness Normalization (EBU R128)  
-- Tempo & Pitch Control  
-- System EQ Integration  
-
-### 🎨 UI & Discovery
-- Material You (Dynamic Colors)  
-- Synced Lyrics + Translation  
-- Discord Rich Presence  
-- Personalized Home Feed  
-- Year in Review Stats  
-- Custom Animated Loader  
-
----
-
-## 🧠 Architecture
-
-Built using **modern Android engineering principles**:
-
-- MVVM + Clean Architecture  
-- Unidirectional Data Flow (UDF)  
-- Modular & scalable codebase  
-
----
-
-## 🛠 Tech Stack
-
-| Layer | Stack |
-|------|------|
-| Language | Kotlin |
-| UI | Jetpack Compose + Material 3 |
-| Audio | Media3 / ExoPlayer |
-| DI | Hilt |
-| Database | Room (Encrypted) |
-| Networking | Ktor + Retrofit |
-| Async | Coroutines + Flow |
-| Build | Gradle KTS |
-
----
-
-## 📂 Project Structure
+Clone the repository and build the debug APK:
 
 ```bash
-wou/
-├── app/
-├── innertube/
-├── lrclib/
-├── kizzy/
-├── canvas/
-├── lastfm/
-├── kugou/
-```
-
-Getting Started \
-Requirements\
-Android Studio Ladybug+\
-JDK 17\
-Android SDK 34+ \
-Run Locally\
-Bash
-```
 git clone https://github.com/kainotch/WOU.git
 cd WOU
+./gradlew assembleDebug
 ```
-Open in Android Studio → Sync → Run ▶ \
-📦 Download
- 
 
-🚀 Get Latest Release⁠ 
+On Windows:
+```cmd
+gradlew.bat assembleDebug
+```
 
----
+The output file will be at `app/build/outputs/apk/debug/app-debug.apk`.
 
-## 💖 Support the Developer
+## Known issues
 
-If you enjoy using **WOU**, consider sponsoring the project on GitHub:
+- Lyric fetching can be slow on first play over weak mobile data, and less popular tracks might only have unsynced plain lyrics or none at all.
+- YouTube occasionally throttles or alters media streams, which can cause a brief buffer hitch before playback continues.
+- Android Auto is not supported yet.
+- Google account login with brand accounts or complex 2FA prompts can sometimes take more than one attempt to complete.
 
-<a href="https://github.com/sponsors/kainotch">
-  <img src="https://img.shields.io/badge/Sponsor-GitHub%20Sponsors-EA4AAA?style=for-the-badge&logo=github-sponsors&logoColor=white" alt="Sponsor on GitHub">
-</a>
+## Credits and license
 
----
+WOU builds upon work from the open-source music community, particularly InnerTune, Metrolist, and Innertube. Lyrics are powered by LRCLIB.
 
-## 💬 Community
-
-Have a feature request, found a bug, or just want to share your favorite music setups? Join the official WOU community!
-
-* **Discord:** [Join the WOU Server](https://discord.com/invite/qybFSATs7Q)
-* **Instagram:** [@kainotch](https://www.instagram.com/kainotch/)
-* **GitHub Discussions:** [Open a Discussion](https://github.com/kainotch/WOU/discussions)
-
-
-
----
-
-
-🙌 Credits\
-Huge respect to these projects:
-
-Archivetune -base framework\
-Metrolist\
-InnerTune\
-Kizzy\
-SimpMusic\
-BetterLyrics
-
-⚖️ Legal\
-WOU is an independent client and is not affiliated with YouTube or Google.\
-Please support artists through official platforms ❤️\
-Licensed under GPL-3.0
- 
-
-💙 Built with passion by Notch\
-⭐ Star the repo if WOU impressed you\
-🚀 Help it reach more people
+Licensed under the GNU General Public License v3.0 (GPL-3.0).
