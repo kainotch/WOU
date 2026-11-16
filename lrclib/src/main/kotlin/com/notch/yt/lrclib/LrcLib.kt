@@ -78,7 +78,7 @@ object LrcLib {
                 tracks.bestMatchingFor(duration, title, artist)?.syncedLyrics?.let { LrcLib.Lyrics(it) }
             }
             else -> {
-                tracks.bestMatchingFor(duration)?.syncedLyrics?.let { LrcLib.Lyrics(it) }
+                tracks.bestMatchingFor(duration, title, artist)?.syncedLyrics?.let { LrcLib.Lyrics(it) }
             }
         }
 

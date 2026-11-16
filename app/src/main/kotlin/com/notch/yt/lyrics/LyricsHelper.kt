@@ -44,12 +44,12 @@ constructor(
 ) {
     private val baseProviders =
         listOf(
-            SimpMusicLyricsProvider,
-            BetterLyricsProvider,
             LrcLibLyricsProvider,
+            BetterLyricsProvider,
             KuGouLyricsProvider,
             YouTubeSubtitleLyricsProvider,
             YouTubeLyricsProvider,
+            SimpMusicLyricsProvider,
         )
 
     private val cache = LruCache<String, List<LyricsResult>>(MAX_CACHE_SIZE)
@@ -213,7 +213,7 @@ constructor(
         fun launchProvider(provider: LyricsProvider) {
             val job = scope.launch {
                 try {
-                    val lyrics = fetchFromProvider(provider, mediaMetadata, cleanTitle, cleanArtist, 3500L)
+                    val lyrics = fetchFromProvider(provider, mediaMetadata, cleanTitle, cleanArtist, 5000L)
                     if (lyrics != null && isMeaningfulLyrics(lyrics)) {
                         val result = LyricsResult(provider.name, lyrics)
                         if (isSyncedLyrics(lyrics)) {
@@ -238,7 +238,7 @@ constructor(
                     }
                 }
             }
-            allJobs.add(job)
+            synchronized(allJobs) { allJobs.add(job) }
         }
 
         // Launch preferred provider immediately
@@ -253,10 +253,10 @@ constructor(
                 others.forEach { launchProvider(it) }
             }
         }
-        allJobs.add(orchestratorJob)
+        synchronized(allJobs) { allJobs.add(orchestratorJob) }
 
         val finalResult = try {
-            withTimeoutOrNull(4500L) {
+            withTimeoutOrNull(7500L) {
                 winner.await()
             } ?: fallbackPlainLyrics.get() ?: LyricsResult("None", LYRICS_NOT_FOUND)
         } catch (e: Exception) {
