@@ -21,6 +21,8 @@ object JamConstants {
     const val MSG_USER_LEFT = "user_left"
     const val MSG_CHAT_MESSAGE = "chat_message"
     const val MSG_SYNC_PLAYBACK = "sync_playback"
+    const val MSG_QUEUE_UPDATE = "queue_update"
+    const val MSG_QUEUE_UPDATED = "queue_updated"
     const val MSG_HOST_CHANGED = "host_changed"
     const val MSG_ROOM_MODE_CHANGED = "room_mode_changed"
     const val MSG_ERROR = "error"
@@ -29,6 +31,11 @@ object JamConstants {
     const val ACTION_PAUSE = "pause"
     const val ACTION_SEEK = "seek"
     const val ACTION_CHANGE_TRACK = "change_track"
+    const val ACTION_QUEUE_ADD = "queue_add"
+    const val ACTION_QUEUE_REMOVE = "queue_remove"
+    const val ACTION_QUEUE_CLEAR = "queue_clear"
+    const val ACTION_SKIP_NEXT = "skip_next"
+    const val ACTION_SKIP_PREV = "skip_prev"
 
     const val MODE_HOST_ONLY = "host_only"
     const val MODE_COLLABORATIVE = "collaborative"
@@ -83,6 +90,7 @@ data class PlaybackActionRequest(
     @SerialName("position_ms") val positionMs: Long = 0L,
     @SerialName("client_time_ms") val clientTimeMs: Long = System.currentTimeMillis(),
     @SerialName("is_playing") val isPlaying: Boolean = true,
+    @SerialName("queue") val queue: List<TrackInfo>? = null,
 )
 
 @Serializable
@@ -91,6 +99,7 @@ data class PlaybackState(
     @SerialName("position_ms") val positionMs: Long = 0L,
     @SerialName("server_time_ms") val serverTimeMs: Long = 0L,
     @SerialName("is_playing") val isPlaying: Boolean = false,
+    @SerialName("queue") val queue: List<TrackInfo> = emptyList(),
 )
 
 @Serializable
@@ -122,16 +131,45 @@ data class SyncPlaybackPayload(
     @SerialName("position_ms") val positionMs: Long = 0L,
     @SerialName("server_time_ms") val serverTimeMs: Long = 0L,
     @SerialName("is_playing") val isPlaying: Boolean = false,
+    @SerialName("queue") val queue: List<TrackInfo> = emptyList(),
+)
+
+@Serializable
+data class QueueUpdatePayload(
+    @SerialName("queue") val queue: List<TrackInfo> = emptyList(),
+)
+
+@Serializable
+data class QueueUpdatedPayload(
+    @SerialName("queue") val queue: List<TrackInfo> = emptyList(),
+    @SerialName("host_id") val hostId: String? = null,
+)
+
+@Serializable
+data class HostChangedPayload(
+    @SerialName("new_host_id") val newHostId: String = "",
+    @SerialName("new_host_name") val newHostName: String = "",
+    @SerialName("user_id") val userId: String = "",
+    @SerialName("name") val name: String = "",
+    @SerialName("is_host") val isHost: Boolean = true,
 )
 
 @Serializable
 data class UserJoinedPayload(
-    @SerialName("participant") val participant: Participant,
+    @SerialName("user_id") val userId: String = "",
+    @SerialName("name") val name: String = "",
+    @SerialName("is_host") val isHost: Boolean = false,
+    @SerialName("is_cohost") val isCoHost: Boolean = false,
+    @SerialName("total_users") val totalUsers: Int = 0,
+    @SerialName("participant") val participant: Participant? = null,
 )
 
 @Serializable
 data class UserLeftPayload(
-    @SerialName("user_id") val userId: String,
+    @SerialName("user_id") val userId: String = "",
+    @SerialName("name") val name: String = "",
+    @SerialName("is_host") val isHost: Boolean = false,
+    @SerialName("total_users") val totalUsers: Int = 0,
 )
 
 @Serializable

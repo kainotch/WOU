@@ -44,6 +44,7 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -601,14 +602,133 @@ fun WouJamSheet(
                     }
                 }
 
+                // Upcoming Jam Queue
+                item {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = "Jam Queue (${jamState.queue.size})",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+
+                        if (jamState.queue.isNotEmpty() && (jamState.isHost || jamState.roomMode == JamConstants.MODE_COLLABORATIVE)) {
+                            TextButton(onClick = { JamManager.clearQueue() }) {
+                                Text(
+                                    text = "Clear",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.error
+                                )
+                            }
+                        }
+                    }
+                }
+
+                if (jamState.queue.isEmpty()) {
+                    item {
+                        Surface(
+                            shape = RoundedCornerShape(14.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = "Queue is empty. Songs added to queue will sync here for everyone.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(14.dp)
+                            )
+                        }
+                    }
+                } else {
+                    items(jamState.queue, key = { it.id + "_" + jamState.queue.indexOf(it) }) { track ->
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 2.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                if (!track.artworkUrl.isNullOrBlank()) {
+                                    AsyncImage(
+                                        model = track.artworkUrl,
+                                        contentDescription = null,
+                                        contentScale = ContentScale.Crop,
+                                        modifier = Modifier
+                                            .size(38.dp)
+                                            .clip(RoundedCornerShape(6.dp))
+                                    )
+                                } else {
+                                    Surface(
+                                        shape = RoundedCornerShape(6.dp),
+                                        color = MaterialTheme.colorScheme.primaryContainer,
+                                        modifier = Modifier.size(38.dp)
+                                    ) {
+                                        Box(contentAlignment = Alignment.Center) {
+                                            Icon(
+                                                painter = painterResource(R.drawable.music_note),
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                        }
+                                    }
+                                }
+
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = track.title,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Medium,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    Text(
+                                        text = track.artist,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+
+                                if (jamState.isHost || jamState.roomMode == JamConstants.MODE_COLLABORATIVE) {
+                                    IconButton(
+                                        onClick = { JamManager.removeFromQueue(track) },
+                                        modifier = Modifier.size(28.dp)
+                                    ) {
+                                        Icon(
+                                            painter = painterResource(R.drawable.close),
+                                            contentDescription = "Remove",
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
                 // Listeners List
                 item {
+                    val count = maxOf(jamState.totalUsers, jamState.participants.size)
                     Text(
-                        text = "${stringResource(R.string.jam_listeners)} (${jamState.participants.size})",
+                        text = "${stringResource(R.string.jam_listeners)} ($count)",
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = 4.dp)
+                        modifier = Modifier.padding(top = 8.dp)
                     )
                 }
 

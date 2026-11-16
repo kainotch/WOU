@@ -3,6 +3,8 @@ package com.notch.yt.ui.jam
 import android.util.Log
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
+import com.notch.yt.extensions.metadata
+import com.notch.yt.extensions.toMediaItem
 import com.notch.yt.innertube.models.WatchEndpoint
 import com.notch.yt.models.MediaMetadata
 import com.notch.yt.playback.PlayerConnection
@@ -10,6 +12,7 @@ import com.notch.yt.playback.queues.YouTubeQueue
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -35,6 +38,8 @@ data class JamUiState(
     val hostName: String = "",
     val roomMode: String = JamConstants.MODE_COLLABORATIVE,
     val participants: List<Participant> = emptyList(),
+    val totalUsers: Int = 1,
+    val queue: List<TrackInfo> = emptyList(),
     val currentTrack: TrackInfo? = null,
     val isPlaying: Boolean = false,
     val positionMs: Long = 0L,
@@ -65,6 +70,12 @@ object JamManager {
 
     private var playerConnection: PlayerConnection? = null
     private var isApplyingRemoteUpdate = false
+    private var lastRemoteAppliedTrackId: String? = null
+    private var lastBroadcastTrackId: String? = null
+
+    private var userInitiatedLeave = false
+    private var reconnectJob: Job? = null
+    private var queueSyncJob: Job? = null
 
     private val playerListener = object : Player.Listener {
         override fun onIsPlayingChanged(isPlaying: Boolean) {
@@ -110,24 +121,80 @@ object JamManager {
             if (isApplyingRemoteUpdate) return
             val state = _uiState.value
             if (!state.isConnected || state.roomCode == null) return
+
+            // Automatic queue transitions (AUTO) must ONLY be driven by the host.
+            // A guest's local player must NEVER broadcast automatic end-of-track transitions.
+            if (!state.isHost && reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO) {
+                return
+            }
+
             if (!state.isHost && state.roomMode == JamConstants.MODE_HOST_ONLY) return
 
             val player = playerConnection?.player ?: return
-            val meta = playerConnection?.mediaMetadata?.value ?: return
+            val meta = mediaItem?.metadata ?: playerConnection?.mediaMetadata?.value ?: return
+            val trackInfo = meta.toTrackInfo()
+            if (trackInfo.id.isBlank()) return
+
+            // Deduplicate to avoid broadcast loops
+            if (trackInfo.id == lastRemoteAppliedTrackId) return
+            if (trackInfo.id == lastBroadcastTrackId && player.currentPosition < 1000L) return
+
+            lastBroadcastTrackId = trackInfo.id
             sendPlaybackAction(
                 action = JamConstants.ACTION_CHANGE_TRACK,
-                track = meta.toTrackInfo(),
+                track = trackInfo,
                 positionMs = 0L,
                 isPlaying = player.isPlaying
             )
+
+            if (state.isHost) {
+                syncExoPlayerQueueToJam()
+            }
         }
     }
 
     fun bindPlayerConnection(connection: PlayerConnection) {
         if (playerConnection == connection) return
         playerConnection?.player?.removeListener(playerListener)
+        queueSyncJob?.cancel()
         playerConnection = connection
         connection.player.addListener(playerListener)
+
+        // Sync host's ExoPlayer queue to Jam queue whenever it changes
+        queueSyncJob = scope.launch {
+            connection.queueWindows.collect { windows ->
+                val state = _uiState.value
+                if (state.isConnected && state.isHost) {
+                    val currentIdx = connection.currentMediaItemIndex.value
+                    if (windows.isNotEmpty() && currentIdx < windows.size) {
+                        val upcoming = windows.drop(currentIdx + 1).take(15).mapNotNull { it.mediaItem.metadata?.toTrackInfo() }
+                        if (upcoming != state.queue) {
+                            syncHostQueue(upcoming)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private fun syncExoPlayerQueueToJam() {
+        val conn = playerConnection ?: return
+        val player = conn.player
+        val currentIdx = player.currentMediaItemIndex
+        val totalCount = player.mediaItemCount
+        if (currentIdx + 1 < totalCount) {
+            val upcoming = mutableListOf<TrackInfo>()
+            for (i in (currentIdx + 1) until minOf(totalCount, currentIdx + 16)) {
+                val item = player.getMediaItemAt(i)
+                val itemMeta = item.metadata
+                if (itemMeta != null && itemMeta.id.isNotBlank()) {
+                    upcoming.add(itemMeta.toTrackInfo())
+                }
+            }
+            if (upcoming.isNotEmpty()) {
+                syncHostQueue(upcoming)
+            }
+        }
     }
 
     fun sanitizeDisplayName(name: String?): String {
@@ -147,6 +214,8 @@ object JamManager {
     }
 
     fun createJam(name: String, collaborative: Boolean = true) {
+        userInitiatedLeave = false
+        reconnectJob?.cancel()
         val validName = sanitizeDisplayName(name)
         val mode = if (collaborative) JamConstants.MODE_COLLABORATIVE else JamConstants.MODE_HOST_ONLY
         _uiState.value = _uiState.value.copy(isConnecting = true, errorMessage = null)
@@ -161,6 +230,8 @@ object JamManager {
     }
 
     fun joinJam(code: String, name: String) {
+        userInitiatedLeave = false
+        reconnectJob?.cancel()
         val validCode = code.trim().uppercase()
         val validName = sanitizeDisplayName(name)
         if (validCode.isBlank()) {
@@ -180,6 +251,8 @@ object JamManager {
     }
 
     fun leaveJam() {
+        userInitiatedLeave = true
+        reconnectJob?.cancel()
         if (_uiState.value.isConnected) {
             val envelope = JamEnvelope(type = JamConstants.MSG_LEAVE_ROOM)
             sendEnvelope(envelope)
@@ -200,11 +273,49 @@ object JamManager {
         _uiState.value = state.copy(roomMode = mode)
     }
 
+    fun addToQueue(track: TrackInfo) {
+        val state = _uiState.value
+        if (!state.isConnected) return
+        if (!state.isHost && state.roomMode == JamConstants.MODE_HOST_ONLY) return
+        val updated = state.queue + track
+        _uiState.value = state.copy(queue = updated)
+        sendPlaybackAction(action = JamConstants.ACTION_QUEUE_ADD, track = track, queue = updated)
+        if (state.isHost) {
+            playerConnection?.addToQueue(track.toMediaMetadata().toMediaItem())
+        }
+    }
+
+    fun removeFromQueue(track: TrackInfo) {
+        val state = _uiState.value
+        if (!state.isConnected) return
+        if (!state.isHost && state.roomMode == JamConstants.MODE_HOST_ONLY) return
+        val updated = state.queue.filter { it.id != track.id }
+        _uiState.value = state.copy(queue = updated)
+        sendPlaybackAction(action = JamConstants.ACTION_QUEUE_REMOVE, track = track, queue = updated)
+    }
+
+    fun clearQueue() {
+        val state = _uiState.value
+        if (!state.isConnected) return
+        if (!state.isHost && state.roomMode == JamConstants.MODE_HOST_ONLY) return
+        _uiState.value = state.copy(queue = emptyList())
+        sendPlaybackAction(action = JamConstants.ACTION_QUEUE_CLEAR, queue = emptyList())
+    }
+
+    fun syncHostQueue(upcomingTracks: List<TrackInfo>) {
+        val state = _uiState.value
+        if (!state.isConnected || !state.isHost) return
+        _uiState.value = state.copy(queue = upcomingTracks)
+        val payload = json.encodeToJsonElement(QueueUpdatePayload(queue = upcomingTracks))
+        sendEnvelope(JamEnvelope(type = JamConstants.MSG_QUEUE_UPDATE, payload = payload))
+    }
+
     fun sendPlaybackAction(
         action: String,
         track: TrackInfo? = null,
         positionMs: Long = 0L,
-        isPlaying: Boolean = true
+        isPlaying: Boolean = true,
+        queue: List<TrackInfo>? = null,
     ) {
         val state = _uiState.value
         if (!state.isConnected) return
@@ -213,19 +324,23 @@ object JamManager {
             track = track,
             positionMs = positionMs,
             clientTimeMs = System.currentTimeMillis(),
-            isPlaying = isPlaying
+            isPlaying = isPlaying,
+            queue = queue ?: state.queue,
         )
         val payload = json.encodeToJsonElement(req)
         sendEnvelope(JamEnvelope(type = JamConstants.MSG_PLAYBACK_ACTION, payload = payload))
     }
 
-    private fun connectWebSocket(onConnected: () -> Unit) {
+    private fun connectWebSocket(onConnected: (() -> Unit)? = null) {
         if (webSocket != null && _uiState.value.isConnected) {
-            onConnected()
+            onConnected?.invoke()
             return
         }
 
-        pendingAction = onConnected
+        if (onConnected != null) {
+            pendingAction = onConnected
+        }
+
         try {
             webSocket?.close(1000, "Reconnecting")
         } catch (_: Exception) {}
@@ -238,7 +353,8 @@ object JamManager {
             override fun onOpen(ws: WebSocket, response: Response) {
                 Log.d(TAG, "WebSocket connected to ${JamConstants.DEFAULT_JAM_SERVER_WS}")
                 scope.launch {
-                    _uiState.value = _uiState.value.copy(isConnected = true, errorMessage = null)
+                    reconnectJob?.cancel()
+                    _uiState.value = _uiState.value.copy(isConnected = true, isConnecting = false, errorMessage = null)
                     pendingAction?.invoke()
                     pendingAction = null
                 }
@@ -252,22 +368,59 @@ object JamManager {
 
             override fun onClosed(ws: WebSocket, code: Int, reason: String) {
                 Log.d(TAG, "WebSocket closed: $reason ($code)")
-                scope.launch {
-                    _uiState.value = _uiState.value.copy(isConnected = false, isConnecting = false)
-                }
+                handleDisconnect()
             }
 
             override fun onFailure(ws: WebSocket, t: Throwable, response: Response?) {
                 Log.e(TAG, "WebSocket failure: ${t.message}", t)
-                scope.launch {
-                    _uiState.value = _uiState.value.copy(
-                        isConnected = false,
-                        isConnecting = false,
-                        errorMessage = t.message ?: "Failed to connect to Jam server"
-                    )
-                }
+                handleDisconnect()
             }
         })
+    }
+
+    private fun handleDisconnect() {
+        scope.launch {
+            if (userInitiatedLeave) {
+                _uiState.value = JamUiState()
+                return@launch
+            }
+            val roomCode = _uiState.value.roomCode
+            if (roomCode != null) {
+                _uiState.value = _uiState.value.copy(
+                    isConnected = false,
+                    isConnecting = true,
+                    errorMessage = "Reconnecting to Jam..."
+                )
+                scheduleReconnect()
+            } else {
+                _uiState.value = _uiState.value.copy(isConnected = false, isConnecting = false)
+            }
+        }
+    }
+
+    private fun scheduleReconnect() {
+        if (userInitiatedLeave || _uiState.value.roomCode == null) return
+        reconnectJob?.cancel()
+        reconnectJob = scope.launch {
+            var attempt = 0
+            while (!userInitiatedLeave && !_uiState.value.isConnected && _uiState.value.roomCode != null) {
+                attempt++
+                val delayMs = (attempt * 1200L).coerceAtMost(5000L)
+                delay(delayMs)
+                if (userInitiatedLeave) break
+                val code = _uiState.value.roomCode ?: break
+                val name = _uiState.value.userName
+                Log.d(TAG, "Reconnecting attempt $attempt to Jam room $code...")
+                try {
+                    connectWebSocket {
+                        val payload = json.encodeToJsonElement(JoinRoomRequest(roomCode = code, name = name))
+                        sendEnvelope(JamEnvelope(type = JamConstants.MSG_JOIN_ROOM, payload = payload))
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Reconnect attempt error", e)
+                }
+            }
+        }
     }
 
     private fun sendEnvelope(envelope: JamEnvelope) {
@@ -299,6 +452,7 @@ object JamManager {
                         hostName = payload.name,
                         roomMode = payload.roomMode,
                         participants = listOf(hostParticipant),
+                        totalUsers = 1,
                         errorMessage = null
                     )
 
@@ -313,6 +467,7 @@ object JamManager {
                             isPlaying = player.isPlaying
                         )
                     }
+                    syncExoPlayerQueueToJam()
                 }
 
                 JamConstants.MSG_SYNC_STATE -> {
@@ -332,6 +487,8 @@ object JamManager {
                         hostName = hostName,
                         roomMode = payload.roomMode,
                         participants = payload.participants,
+                        totalUsers = payload.participants.size,
+                        queue = payload.playback.queue,
                         currentTrack = payload.playback.currentTrack,
                         isPlaying = payload.playback.isPlaying,
                         positionMs = payload.playback.positionMs,
@@ -353,8 +510,19 @@ object JamManager {
                     val payload = envelope.payload?.let {
                         json.decodeFromJsonElement<UserJoinedPayload>(it)
                     } ?: return
-                    val updated = _uiState.value.participants.filter { it.userId != payload.participant.userId } + payload.participant
-                    _uiState.value = _uiState.value.copy(participants = updated)
+                    val p = payload.participant ?: Participant(
+                        userId = payload.userId,
+                        name = payload.name,
+                        isHost = payload.isHost,
+                        isCoHost = payload.isCoHost,
+                        joinedAt = System.currentTimeMillis()
+                    )
+                    val updated = _uiState.value.participants.filter { it.userId != p.userId } + p
+                    val count = if (payload.totalUsers > 0) payload.totalUsers else updated.size
+                    _uiState.value = _uiState.value.copy(
+                        participants = updated,
+                        totalUsers = count
+                    )
                 }
 
                 JamConstants.MSG_USER_LEFT -> {
@@ -362,7 +530,33 @@ object JamManager {
                         json.decodeFromJsonElement<UserLeftPayload>(it)
                     } ?: return
                     val updated = _uiState.value.participants.filter { it.userId != payload.userId }
-                    _uiState.value = _uiState.value.copy(participants = updated)
+                    val count = if (payload.totalUsers > 0) payload.totalUsers else updated.size
+                    _uiState.value = _uiState.value.copy(
+                        participants = updated,
+                        totalUsers = count
+                    )
+                }
+
+                JamConstants.MSG_HOST_CHANGED -> {
+                    val payload = envelope.payload?.let {
+                        json.decodeFromJsonElement<HostChangedPayload>(it)
+                    } ?: return
+                    val isSelf = payload.newHostId == _uiState.value.userId
+                    val updatedParticipants = _uiState.value.participants.map {
+                        it.copy(isHost = it.userId == payload.newHostId)
+                    }
+                    _uiState.value = _uiState.value.copy(
+                        isHost = isSelf,
+                        hostName = payload.newHostName.ifBlank { payload.name },
+                        participants = updatedParticipants
+                    )
+                }
+
+                JamConstants.MSG_QUEUE_UPDATED -> {
+                    val payload = envelope.payload?.let {
+                        json.decodeFromJsonElement<QueueUpdatedPayload>(it)
+                    } ?: return
+                    _uiState.value = _uiState.value.copy(queue = payload.queue)
                 }
 
                 JamConstants.MSG_SYNC_PLAYBACK -> {
@@ -374,11 +568,27 @@ object JamManager {
                         return // Skip echo of our own action
                     }
 
+                    val updatedQueue = if (payload.queue.isNotEmpty() || payload.action.startsWith("queue_")) {
+                        payload.queue
+                    } else _uiState.value.queue
+
                     _uiState.value = _uiState.value.copy(
                         currentTrack = payload.track ?: _uiState.value.currentTrack,
                         isPlaying = payload.isPlaying,
-                        positionMs = payload.positionMs
+                        positionMs = payload.positionMs,
+                        queue = updatedQueue
                     )
+
+                    // If host and a guest added a track to queue, add to host's local player queue
+                    if (_uiState.value.isHost && payload.action == JamConstants.ACTION_QUEUE_ADD && payload.track != null) {
+                        val track = payload.track
+                        val p = playerConnection?.player
+                        val count = p?.mediaItemCount ?: 0
+                        val currentQueueIds = (0 until count).mapNotNull { p?.getMediaItemAt(it)?.mediaId }.toSet()
+                        if (!currentQueueIds.contains(track.id)) {
+                            playerConnection?.addToQueue(track.toMediaMetadata().toMediaItem())
+                        }
+                    }
 
                     applyRemotePlayback(
                         action = payload.action,
@@ -422,6 +632,7 @@ object JamManager {
         val conn = playerConnection ?: return
         scope.launch(Dispatchers.Main) {
             isApplyingRemoteUpdate = true
+            lastRemoteAppliedTrackId = track?.id
             try {
                 // 1. Check if track needs loading
                 if (track != null && track.id.isNotBlank()) {
@@ -455,7 +666,7 @@ object JamManager {
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to apply remote playback", e)
             } finally {
-                delay(500)
+                delay(1200)
                 isApplyingRemoteUpdate = false
             }
         }

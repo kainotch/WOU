@@ -26,6 +26,8 @@ import com.notch.yt.extensions.getQueueWindows
 import com.notch.yt.extensions.metadata
 import com.notch.yt.playback.MusicService.MusicBinder
 import com.notch.yt.playback.queues.Queue
+import com.notch.yt.ui.jam.JamManager
+import com.notch.yt.ui.jam.toTrackInfo
 import com.notch.yt.utils.reportException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -150,12 +152,26 @@ class PlayerConnection(
 
     fun playNext(items: List<MediaItem>) {
         service.playNext(items)
+        if (JamManager.uiState.value.isConnected) {
+            items.forEach { item ->
+                item.metadata?.let { meta ->
+                    JamManager.addToQueue(meta.toTrackInfo())
+                }
+            }
+        }
     }
 
     fun addToQueue(item: MediaItem) = addToQueue(listOf(item))
 
     fun addToQueue(items: List<MediaItem>) {
         service.addToQueue(items)
+        if (JamManager.uiState.value.isConnected) {
+            items.forEach { item ->
+                item.metadata?.let { meta ->
+                    JamManager.addToQueue(meta.toTrackInfo())
+                }
+            }
+        }
     }
 
     fun toggleLike() {
