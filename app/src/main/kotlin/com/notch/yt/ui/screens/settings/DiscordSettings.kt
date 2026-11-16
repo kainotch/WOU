@@ -79,6 +79,17 @@ fun DiscordSettings(
     val playerConnection = LocalPlayerConnection.current ?: return
     val song by playerConnection.currentSong.collectAsState(null)
     val playbackState by playerConnection.playbackState.collectAsState()
+    val currentFormat by playerConnection.currentFormat.collectAsState(null)
+    val audioQuality = remember(currentFormat) {
+        currentFormat?.sampleRate?.let { rate ->
+            if (rate > 0) {
+                val rateKhz = rate / 1000.0
+                val rounded = Math.round(rateKhz).toInt()
+                if (kotlin.math.abs(rateKhz - rounded) < 0.05) "$rounded kHz"
+                else String.format(java.util.Locale.US, "%.1f kHz", rateKhz)
+            } else null
+        }
+    }
     var position by rememberSaveable(playbackState) {
         mutableLongStateOf(playerConnection.player.currentPosition)
     }
@@ -294,7 +305,7 @@ fun DiscordSettings(
      )
         val (smallImageType, onSmallImageTypeChange) = rememberPreference(
             key = DiscordSmallImageTypeKey,
-            defaultValue = "artist"
+            defaultValue = "appicon"
      )
         val (smallImageCustomUrl, onSmallImageCustomUrlChange) = rememberPreference(
             key = DiscordSmallImageCustomUrlKey,
@@ -788,7 +799,8 @@ if (smallImageType == "custom") {
         smallImageCustomUrl = smallImageCustomUrl,
         button1Enabled = button1Enabled,
         button2Enabled = button2Enabled,
-        isPlaying = playerConnection.player.isPlaying
+        isPlaying = playerConnection.player.isPlaying,
+        quality = audioQuality,
     )
 }
 
@@ -941,11 +953,12 @@ fun RichPresence(
     activityType: String = "LISTENING",
     largeImageType: String = "thumbnail",
     largeImageCustomUrl: String = "",
-    smallImageType: String = "artist",
+    smallImageType: String = "appicon",
     smallImageCustomUrl: String = "",
     button1Enabled: Boolean = true,
     button2Enabled: Boolean = true,
     isPlaying: Boolean = false,
+    quality: String? = null,
 ) {
     val context = LocalContext.current
 
@@ -959,10 +972,12 @@ fun RichPresence(
     }
    }
 
-   val (button1Label) = rememberPreference(DiscordActivityButton1LabelKey, "Listen on YouTube Music")
+   val (rawButton1Label) = rememberPreference(DiscordActivityButton1LabelKey, "Listen On wou")
+   val button1Label = if (rawButton1Label == "Listen on YouTube Music") "Listen On wou" else rawButton1Label
    val (button1Enabled) = rememberPreference(DiscordActivityButton1EnabledKey, true)
 
-   val (button2Label) = rememberPreference(DiscordActivityButton2LabelKey, "Go to wou")
+   val (rawButton2Label) = rememberPreference(DiscordActivityButton2LabelKey, "Get wou")
+   val button2Label = if (rawButton2Label == "Go to wou") "Get wou" else rawButton2Label
    val (button2Enabled) = rememberPreference(DiscordActivityButton2EnabledKey, true)
 
 // Button URL sources + custom
@@ -1002,7 +1017,7 @@ fun RichPresence(
     ActivitySource.ARTIST -> "$activityVerb ${song?.artists?.firstOrNull()?.name ?: "Artist"}"
     ActivitySource.ALBUM -> "$activityVerb ${song?.album?.title ?: song?.song?.albumName ?: "Album"}"
     ActivitySource.SONG -> "$activityVerb ${song?.song?.title ?: "Song"}"
-    ActivitySource.APP -> "$activityVerb wou"
+    ActivitySource.APP -> if (song != null) "$activityVerb wou \u00B7 ${song.song.title}" else "$activityVerb wou"
    }
 
 
@@ -1099,12 +1114,13 @@ fun RichPresence(
                             )
 
                             // Compute a preview for the "state" line according to the selected stateSource
-                            val previewState = when (stateSource) {
+                            val baseState = when (stateSource) {
                                 ActivitySource.ARTIST -> song?.artists?.joinToString { it.name } ?: "Artist"
                                 ActivitySource.ALBUM -> song?.song?.albumName ?: song?.album?.title ?: song?.song?.title ?: "Unknown Album"
                                 ActivitySource.SONG -> song?.song?.title ?: "Song"
                                 ActivitySource.APP -> stringResource(R.string.app_name)
                             }
+                            val previewState = if (!quality.isNullOrBlank() && !baseState.contains(quality)) "$baseState \u00B7 $quality" else baseState
 
                             Text(
                                 text = previewState,
@@ -1144,7 +1160,7 @@ fun RichPresence(
                      },
                         modifier = Modifier.fillMaxWidth()
                         ) {
-                            Text(button1Label.ifBlank { "Listen on YouTube Music" })
+                            Text(button1Label.ifBlank { "Listen On wou" })
                         }
                     }
 
@@ -1158,7 +1174,7 @@ fun RichPresence(
                      },
                         modifier = Modifier.fillMaxWidth()
                         ) {
-                            Text(button2Label.ifBlank { "View Album" })
+                            Text(button2Label.ifBlank { "Get wou" })
                         }
                     }
                 }

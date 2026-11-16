@@ -37,6 +37,11 @@ class DiscordRPC(
     private val translationCache: MutableMap<String, String> = mutableMapOf()
     private var lastSongId: String? = null
 
+    private fun clip(value: String, limit: Int = 120): String {
+        val trimmed = value.trim()
+        return if (trimmed.length > limit) trimmed.substring(0, limit - 1) + "..." else trimmed
+    }
+
     private fun pickSourceValue(pref: String, song: Song?, default: String): String = when (pref) {
         "ARTIST" -> song?.artists?.firstOrNull()?.name ?: default
         "ALBUM" -> song?.song?.albumName ?: song?.album?.title ?: default
@@ -77,6 +82,7 @@ class DiscordRPC(
         song: Song,
         currentPlaybackTimeMillis: Long,
         isPaused: Boolean = false,
+        quality: String? = null,
     ) = runCatching {
         val currentTime = System.currentTimeMillis()
         val calculatedStartTime = currentTime - currentPlaybackTimeMillis
@@ -149,7 +155,11 @@ class DiscordRPC(
             "ARTIST" -> translatedMap["{artist}"] ?: pickSourceValue(namePref, song, context.getString(R.string.app_name))
             "ALBUM" -> translatedMap["{album}"] ?: pickSourceValue(namePref, song, context.getString(R.string.app_name))
             "SONG" -> translatedMap["{song}"] ?: pickSourceValue(namePref, song, context.getString(R.string.app_name))
-            "APP" -> context.getString(R.string.app_name)
+            "APP" -> {
+                val appName = context.getString(R.string.app_name)
+                val songTitle = translatedMap["{song}"] ?: song.song.title
+                if (songTitle.isNotBlank()) "$appName \u00B7 ${clip(songTitle)}" else appName
+            }
             else -> pickSourceValue(namePref, song, context.getString(R.string.app_name))
         }
 
@@ -166,23 +176,31 @@ class DiscordRPC(
             activityDetails = song.song.title.ifBlank { context.getString(R.string.app_name) }
         }
 
+        val baseArtist = song.artists.joinToString { it.name }.ifBlank { song.artists.firstOrNull()?.name ?: context.getString(R.string.app_name) }
         var activityState = when (statePref.uppercase()) {
-            "ARTIST" -> translatedMap["{artist}"] ?: pickSourceValue(statePref, song, song.artists.joinToString { it.name })
-            "ALBUM" -> translatedMap["{album}"] ?: pickSourceValue(statePref, song, song.artists.joinToString { it.name })
-            "SONG" -> translatedMap["{song}"] ?: pickSourceValue(statePref, song, song.artists.joinToString { it.name })
+            "ARTIST" -> translatedMap["{artist}"] ?: pickSourceValue(statePref, song, baseArtist)
+            "ALBUM" -> translatedMap["{album}"] ?: pickSourceValue(statePref, song, baseArtist)
+            "SONG" -> translatedMap["{song}"] ?: pickSourceValue(statePref, song, baseArtist)
             "APP" -> context.getString(R.string.app_name)
-            else -> pickSourceValue(statePref, song, song.artists.joinToString { it.name })
+            else -> pickSourceValue(statePref, song, baseArtist)
         }
 
         if (activityState.isNullOrBlank()) {
-            activityState = song.artists.firstOrNull()?.name ?: context.getString(R.string.app_name)
+            activityState = baseArtist
+        }
+
+        val qualityStr = quality?.trim().orEmpty()
+        if (qualityStr.isNotEmpty() && !activityState.contains(qualityStr)) {
+            activityState = clip("$activityState \u00B7 $qualityStr", 125)
         }
 
         val baseSongUrl = "https://music.youtube.com/watch?v=${song.song.id}"
 
-        val button1Label = context.dataStore[DiscordActivityButton1LabelKey] ?: "Listen on YouTube Music"
+        val rawButton1Label = context.dataStore[DiscordActivityButton1LabelKey] ?: "Listen On wou"
+        val button1Label = if (rawButton1Label == "Listen on YouTube Music") "Listen On wou" else rawButton1Label
         val button1Enabled = context.dataStore[DiscordActivityButton1EnabledKey] ?: true
-        val button2Label = context.dataStore[DiscordActivityButton2LabelKey] ?: "Go to wou"
+        val rawButton2Label = context.dataStore[DiscordActivityButton2LabelKey] ?: "Get wou"
+        val button2Label = if (rawButton2Label == "Go to wou") "Get wou" else rawButton2Label
         val button2Enabled = context.dataStore[DiscordActivityButton2EnabledKey] ?: true
 
         val button1UrlSource = context.dataStore[DiscordActivityButton1UrlSourceKey] ?: "songurl"
@@ -213,7 +231,7 @@ class DiscordRPC(
 
         val largeImageTypePref = context.dataStore[DiscordLargeImageTypeKey] ?: "thumbnail"
         val largeImageCustomPref = context.dataStore[DiscordLargeImageCustomUrlKey] ?: ""
-        val smallImageTypePref = context.dataStore[DiscordSmallImageTypeKey] ?: "artist"
+        val smallImageTypePref = context.dataStore[DiscordSmallImageTypeKey] ?: "appicon"
         val smallImageCustomPref = context.dataStore[DiscordSmallImageCustomUrlKey] ?: ""
 
         val resolvedImages = DiscordImageResolver.resolveImagesForSong(context, song)
@@ -310,15 +328,16 @@ class DiscordRPC(
         val sendSmallText = if (isPaused) {
             context.getString(R.string.discord_paused)
         } else {
+            val appName = context.getString(R.string.app_name)
             val baseSmallText = when (smallImageTypePref.lowercase()) {
                 "song" -> translatedMap["{song}"] ?: song.song.title
                 "artist" -> translatedMap["{artist}"] ?: song.artists.firstOrNull()?.name
                 "thumbnail", "album" -> translatedMap["{album}"] ?: song.song.albumName ?: song.album?.title
-                "appicon", "app" -> context.getString(R.string.app_name)
+                "appicon", "app" -> if (qualityStr.isNotEmpty()) "$appName \u00B7 $qualityStr" else appName
                 "custom" -> song.artists.firstOrNull()?.name
-                else -> translatedMap["{artist}"] ?: song.artists.firstOrNull()?.name
+                else -> if (qualityStr.isNotEmpty()) "$appName \u00B7 $qualityStr" else appName
             }
-            "$baseSmallText on wou"
+            if (smallImageTypePref.lowercase() in listOf("appicon", "app")) baseSmallText else "$baseSmallText on $appName"
         }
 
         val applicationIdToSend = APPLICATION_ID
@@ -380,7 +399,7 @@ class DiscordRPC(
                     smallText = sendSmallText ?: "",
                     buttons = finalButtons,
                     type = resolvedType,
-                    statusDisplayType = StatusDisplayType.STATE,
+                    statusDisplayType = StatusDisplayType.NAME,
                     since = sendSince,
                     startTime = sendStartTime,
                     endTime = sendEndTime,
@@ -398,7 +417,7 @@ class DiscordRPC(
                     largeText = resolvedLargeText ?: "",
                     smallText = sendSmallText ?: "",
                     type = resolvedType,
-                    statusDisplayType = StatusDisplayType.STATE,
+                    statusDisplayType = StatusDisplayType.NAME,
                     since = sendSince,
                     startTime = sendStartTime,
                     endTime = sendEndTime,
@@ -413,9 +432,9 @@ class DiscordRPC(
         }
     }
 
-    suspend fun refreshActivity(song: Song, currentPlaybackTimeMillis: Long, isPaused: Boolean = false) = runCatching {
+    suspend fun refreshActivity(song: Song, currentPlaybackTimeMillis: Long, isPaused: Boolean = false, quality: String? = null) = runCatching {
         try {
-            updateSong(song, currentPlaybackTimeMillis, isPaused).getOrThrow()
+            updateSong(song, currentPlaybackTimeMillis, isPaused, quality).getOrThrow()
         } catch (ex: Exception) {
             val msg = ex.message ?: ex.toString()
             Timber.tag("DiscordRPC").e("refreshActivity updateSong failed: %s", msg)

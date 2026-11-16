@@ -41,6 +41,7 @@ object DiscordPresenceManager {
     private var lastPositionProvider: (() -> Long)? = null
     private var lastIsPausedProvider: (() -> Boolean)? = null
     private var lastIntervalProvider: (() -> Long)? = null
+    private var lastQualityProvider: (() -> String?)? = null
     private var lastPresenceUpdateTime = 0L
     private const val MIN_PRESENCE_UPDATE_INTERVAL = 20_000L // 20 seconds debounce
     private var consecutiveFailures = 0
@@ -96,6 +97,7 @@ object DiscordPresenceManager {
         song: Song?,
         positionMs: Long,
         isPaused: Boolean,
+        quality: String? = null,
     ): Boolean = withContext(Dispatchers.IO) {
         rpcMutex.withLock {
             try {
@@ -113,15 +115,13 @@ object DiscordPresenceManager {
                 }
 
                 try {
-                    withTimeout(8_000L) {
-                        DiscordImageResolver.resolveImagesForSong(context, song)
-                    }
+                    DiscordImageResolver.resolveImagesForSong(context, song)
                 } catch (e: Exception) {
-                    Timber.tag(logTag).v(e, "image resolution for presence failed or timed out")
+                    Timber.tag(logTag).v(e, "image resolution for presence failed")
                 }
 
                 val rpc = getOrCreateRpc(context, token)
-                val result = rpc.updateSong(song, positionMs, isPaused)
+                val result = rpc.updateSong(song, positionMs, isPaused, quality)
                 if (result.isSuccess) {
                     consecutiveFailures = 0
                     Timber.tag(logTag).d(
@@ -159,7 +159,8 @@ object DiscordPresenceManager {
         songProvider: () -> Song?,
         positionProvider: () -> Long,
         isPausedProvider: () -> Boolean,
-        intervalProvider: () -> Long
+        intervalProvider: () -> Long,
+        qualityProvider: (() -> String?)? = null,
     ) {
         lastStartContext = context
         lastToken = token
@@ -167,6 +168,7 @@ object DiscordPresenceManager {
         lastPositionProvider = positionProvider
         lastIsPausedProvider = isPausedProvider
         lastIntervalProvider = intervalProvider
+        lastQualityProvider = qualityProvider
 
         if (started.getAndSet(true)) return
 
@@ -179,6 +181,7 @@ object DiscordPresenceManager {
                 val (firstSong, firstPosition, firstIsPaused) = withContext(Dispatchers.Main) {
                     Triple(songProvider(), positionProvider(), isPausedProvider())
                 }
+                val firstQuality = withContext(Dispatchers.Main) { qualityProvider?.invoke() }
 
                 // Try resolving and persisting image URLs before update so DiscordRPC can use saved artwork immediately.
                 try {
@@ -197,6 +200,7 @@ object DiscordPresenceManager {
                         song = firstSong,
                         positionMs = firstPosition,
                         isPaused = firstIsPaused,
+                        quality = firstQuality,
                     )
                     Timber.tag(logTag).d("initial updatePresence result=%s songId=%s", firstResult, firstSong?.song?.id)
                 } catch (e: Exception) {
@@ -212,6 +216,7 @@ object DiscordPresenceManager {
                     val (song, position, isPaused) = withContext(Dispatchers.Main) {
                         Triple(songProvider(), positionProvider(), isPausedProvider())
                     }
+                    val currentQuality = withContext(Dispatchers.Main) { qualityProvider?.invoke() }
 
                     val success = updatePresence(
                         context = context,
@@ -219,6 +224,7 @@ object DiscordPresenceManager {
                         song = song,
                         positionMs = position,
                         isPaused = isPaused,
+                        quality = currentQuality,
                     )
 
                     // optional: handle `success` if needed
@@ -265,6 +271,8 @@ object DiscordPresenceManager {
         val pausedProv = lastIsPausedProvider
         val intervalProv = lastIntervalProvider
 
+        val qualProv = lastQualityProvider
+
         if (ctx == null || token == null || songProv == null || posProv == null || pausedProv == null || intervalProv == null) {
             if (now - lastFailedRestartDueToParams < FAILED_RESTART_LOCKOUT) {
                 Timber.tag(logTag).w("restart skipped (lockout after missing params, wait %dms)", FAILED_RESTART_LOCKOUT - (now - lastFailedRestartDueToParams))
@@ -278,7 +286,7 @@ object DiscordPresenceManager {
         lastRestartTime = now
         lastFailedRestartDueToParams = 0L
         stop()
-        start(ctx, token, songProv, posProv, pausedProv, intervalProv)
+        start(ctx, token, songProv, posProv, pausedProv, intervalProv, qualProv)
         Timber.tag(logTag).d("restarted")
         return true
     }
@@ -294,12 +302,14 @@ object DiscordPresenceManager {
         song: Song?,
         positionMs: Long,
         isPaused: Boolean,
+        quality: String? = null,
     ): Boolean = updatePresence(
         context = context,
         token = token,
         song = song,
         positionMs = positionMs,
         isPaused = isPaused,
+        quality = quality ?: lastQualityProvider?.invoke(),
     )
 
     /** Stop the manager. */

@@ -70,43 +70,11 @@ object DiscordImageResolver {
         val savedArtwork = ArtworkStorage.findBySongId(context, songId)
         
         var thumbnailResolved: String? = savedArtwork?.thumbnail?.takeIf { it.isNotBlank() && it.isResolvedId() }
+            ?: thumbnailUrl
         var artistResolved: String? = savedArtwork?.artist?.takeIf { it.isNotBlank() && it.isResolvedId() }
+            ?: artistUrl
 
-        if (thumbnailResolved != null) {
-            thumbnailUrl?.let { repository.putToCache(it, thumbnailResolved!!) }
-        }
-        if (artistResolved != null) {
-            artistUrl?.let { repository.putToCache(it, artistResolved!!) }
-        }
-
-        val result = withTimeoutOrNull(RESOLUTION_TIMEOUT_MS) {
-            val thumbnailDeferred = if (thumbnailResolved == null && thumbnailUrl != null) {
-                async { resolveImageUrl(thumbnailUrl) }
-            } else null
-
-            val artistDeferred = if (artistResolved == null && artistUrl != null) {
-                async { resolveImageUrl(artistUrl) }
-            } else null
-
-            val newThumbnailResolved = thumbnailDeferred?.await()
-            val newArtistResolved = artistDeferred?.await()
-
-            if (newThumbnailResolved != null) {
-                thumbnailResolved = newThumbnailResolved
-                Timber.tag(TAG).d("Thumbnail resolved: %s -> %s", thumbnailUrl, newThumbnailResolved)
-            }
-            if (newArtistResolved != null) {
-                artistResolved = newArtistResolved
-                Timber.tag(TAG).d("Artist resolved: %s -> %s", artistUrl, newArtistResolved)
-            }
-
-            ResolvedDiscordImages(
-                thumbnailOriginalUrl = thumbnailUrl,
-                thumbnailResolvedId = thumbnailResolved,
-                artistOriginalUrl = artistUrl,
-                artistResolvedId = artistResolved
-            )
-        } ?: ResolvedDiscordImages(
+        val result = ResolvedDiscordImages(
             thumbnailOriginalUrl = thumbnailUrl,
             thumbnailResolvedId = thumbnailResolved,
             artistOriginalUrl = artistUrl,

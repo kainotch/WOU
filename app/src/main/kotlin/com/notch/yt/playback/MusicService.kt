@@ -338,6 +338,7 @@ class MusicService :
         currentMediaMetadata.flatMapLatest { mediaMetadata ->
             database.format(mediaMetadata?.id)
         }.flowOn(Dispatchers.IO)
+    @Volatile private var latestAudioQuality: String? = null
 
     private val normalizeFactor = MutableStateFlow(1f)
     var playerVolume = MutableStateFlow(1f)
@@ -777,6 +778,14 @@ class MusicService :
         ) { format, normalizeAudio ->
             format to normalizeAudio
         }.collectLatest(scope) { (format, normalizeAudio) ->
+            latestAudioQuality = format?.sampleRate?.let { rate ->
+                if (rate > 0) {
+                    val rateKhz = rate / 1000.0
+                    val rounded = Math.round(rateKhz).toInt()
+                    if (kotlin.math.abs(rateKhz - rounded) < 0.05) "$rounded kHz"
+                    else String.format(java.util.Locale.US, "%.1f kHz", rateKhz)
+                } else null
+            }
             audioNormalizationEnabled.value = normalizeAudio
             Timber.tag("AudioNormalization").d("Audio normalization enabled: $normalizeAudio")
             Timber.tag("AudioNormalization").d("Format loudnessDb: ${format?.loudnessDb}, perceptualLoudnessDb: ${format?.perceptualLoudnessDb}")
@@ -1014,7 +1023,8 @@ class MusicService :
                     songProvider = { player.currentMetadata?.let { createTransientSongFromMedia(it) } ?: currentSong.value },
                     positionProvider = { player.currentPosition },
                     isPausedProvider = { !player.isPlaying },
-                    intervalProvider = { getPresenceIntervalMillis(this@MusicService) }
+                    intervalProvider = { getPresenceIntervalMillis(this@MusicService) },
+                    qualityProvider = { latestAudioQuality }
                 )
                 Timber.tag("MusicService").d("Presence manager started with token=$key")
                 lastPresenceToken = key
@@ -1024,10 +1034,23 @@ class MusicService :
         }
     }
 
-    private fun canUpdatePresence(): Boolean {
+    private var lastReportedMediaId: String? = null
+    private var lastReportedIsPlaying: Boolean? = null
+
+    private fun canUpdatePresence(mediaId: String? = null, isPlaying: Boolean? = null): Boolean {
         val now = System.currentTimeMillis()
         synchronized(this) {
+            val isNewSong = mediaId != null && mediaId != lastReportedMediaId
+            val isStateChange = isPlaying != null && lastReportedIsPlaying != null && isPlaying != lastReportedIsPlaying
+            if (isNewSong || isStateChange) {
+                if (mediaId != null) lastReportedMediaId = mediaId
+                if (isPlaying != null) lastReportedIsPlaying = isPlaying
+                lastPresenceUpdateTime = now
+                return true
+            }
             return if (now - lastPresenceUpdateTime > MIN_PRESENCE_UPDATE_INTERVAL) {
+                if (mediaId != null) lastReportedMediaId = mediaId
+                if (isPlaying != null) lastReportedIsPlaying = isPlaying
                 lastPresenceUpdateTime = now
                 true
             } else false
@@ -3636,7 +3659,7 @@ class MusicService :
                 val song = if (mediaId != null) withContext(Dispatchers.IO) { database.song(mediaId).first() } else null
                 val finalSong = song ?: player.currentMetadata?.let { createTransientSongFromMedia(it) }
 
-                if (canUpdatePresence()) {
+                if (canUpdatePresence(mediaId, !player.playWhenReady)) {
                     val success = withContext(Dispatchers.IO) {
                         DiscordPresenceManager.updateNow(
                             context = this@MusicService,
@@ -3644,6 +3667,7 @@ class MusicService :
                             song = finalSong,
                             positionMs = player.currentPosition,
                             isPaused = !player.playWhenReady,
+                            quality = latestAudioQuality,
                         )
                     }
                     if (!success) {
@@ -3764,17 +3788,18 @@ class MusicService :
                         val song = if (mediaId != null) withContext(Dispatchers.IO) { database.song(mediaId).first() } else null
                         val finalSong = song ?: player.currentMetadata?.let { createTransientSongFromMedia(it) }
 
-                        if (canUpdatePresence()) {
+                        if (canUpdatePresence(mediaId, !player.isPlaying)) {
                             val success = DiscordPresenceManager.updateNow(
                                 context = this@MusicService,
                                 token = token,
                                 song = finalSong,
                                 positionMs = player.currentPosition,
                                 isPaused = !player.isPlaying,
+                                quality = latestAudioQuality,
                             )
                             if (!success) {
                                 Timber.tag("MusicService").w("transition immediate presence update failed — attempting restart")
-                                try { DiscordPresenceManager.stop(); DiscordPresenceManager.start(this@MusicService, dataStore.get(DiscordTokenKey, ""), { song }, { player.currentPosition }, { !player.isPlaying }, { getPresenceIntervalMillis(this@MusicService) }) } catch (_: Exception) {}
+                                try { DiscordPresenceManager.stop(); DiscordPresenceManager.start(this@MusicService, dataStore.get(DiscordTokenKey, ""), { song }, { player.currentPosition }, { !player.isPlaying }, { getPresenceIntervalMillis(this@MusicService) }, { latestAudioQuality }) } catch (_: Exception) {}
                             }
                             try {
                                 val lbEnabled = dataStore.get(ListenBrainzEnabledKey, false)
@@ -3826,7 +3851,7 @@ class MusicService :
                         val song = if (currentMediaId != null) withContext(Dispatchers.IO) { database.song(currentMediaId).first() } else null
                         val finalSong = song ?: currentMetadata?.let { createTransientSongFromMedia(it) }
 
-                        if (canUpdatePresence()) {
+                        if (canUpdatePresence(currentMediaId, !isPlaying)) {
                             val success = withContext(Dispatchers.IO) {
                                 DiscordPresenceManager.updateNow(
                                     context = this@MusicService,
@@ -3834,6 +3859,7 @@ class MusicService :
                                     song = finalSong,
                                     positionMs = currentPosition,
                                     isPaused = !isPlaying,
+                                    quality = latestAudioQuality,
                                 )
                             }
                             if (!success) {
