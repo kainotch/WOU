@@ -27,10 +27,14 @@ class DiscordRPC(
 
     companion object {
         private const val APPLICATION_ID = "1165706613961789445"
-        private const val PAUSE_IMAGE_URL =
+        const val PAUSE_IMAGE_URL =
             "mp:external/5fs4qAJvHUnOixpejvI6D3P3QI0ubhmCYSWfIOjA5CE/https/raw.githubusercontent.com/kainotch/WOU/main/fastlane/metadata/android/en-US/images/RPC/pause_icon.png"
-        private const val APP_ICON_URL = 
+        const val APP_ICON_RAW_URL =
+            "https://raw.githubusercontent.com/kainotch/WOU/main/app/src/main/ic_launcher-playstore.png"
+        const val APP_ICON_URL = 
             "mp:external/bqCD6gmZksMbz7Mtg_1J31x063IxG7njGfejco5iS24/https/raw.githubusercontent.com/kainotch/WOU/main/app/src/main/ic_launcher-playstore.png"
+        const val APP_ICON_ASSET_ID =
+            "external/bqCD6gmZksMbz7Mtg_1J31x063IxG7njGfejco5iS24/https/raw.githubusercontent.com/kainotch/WOU/main/app/src/main/ic_launcher-playstore.png"
         private const val logtag = "DiscordRPC"
     }
 

@@ -159,7 +159,7 @@ object DiscordImageResolver {
                     ?: song.artists.firstOrNull()?.thumbnailUrl?.takeIf { it.isValidHttpUrl() }?.let { RpcImage.ExternalImage(it) }
             }
             "appicon" -> {
-                RpcImage.DiscordImage("external/bqCD6gmZksMbz7Mtg_1J31x063IxG7njGfejco5iS24/https/raw.githubusercontent.com/kainotch/WOU/main/app/src/main/ic_launcher-playstore.png")
+                RpcImage.DiscordImage(DiscordRPC.APP_ICON_ASSET_ID)
             }
             "custom" -> {
                 val url = customUrl?.takeIf { it.isNotBlank() && it.isValidHttpUrl() }
