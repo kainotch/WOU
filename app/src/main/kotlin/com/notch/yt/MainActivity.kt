@@ -697,9 +697,9 @@ class MainActivity : ComponentActivity() {
                     val shouldShowNavigationBar =
                         remember(navBackStackEntry, active) {
                             navBackStackEntry?.destination?.route == null ||
-                                    (navigationItems.fastAny { it.route == navBackStackEntry?.destination?.route } ||
-                                     navBackStackEntry?.destination?.route?.startsWith("search/") == true) &&
-                                    !active
+                                    navigationItems.fastAny { it.route == navBackStackEntry?.destination?.route } ||
+                                    navBackStackEntry?.destination?.route?.startsWith("search/") == true ||
+                                    active
                         }
 
                     fun getBottomNavPadding(): Dp {
@@ -1316,7 +1316,7 @@ class MainActivity : ComponentActivity() {
                                                 modifier =
                                                     Modifier
                                                         .fillMaxSize()
-                                                        .padding(bottom = if(!playerBottomSheetState.isDismissed) MiniPlayerHeight else 0.dp)
+                                                        .padding(bottom = (if(!playerBottomSheetState.isDismissed) MiniPlayerHeight else 0.dp) + bottomNavigationBarHeight)
                                                         .navigationBarsPadding(),
                                             ) { searchSource ->
                                                 when (searchSource) {
@@ -1411,26 +1411,33 @@ class MainActivity : ComponentActivity() {
                                                     val isSelected = navBackStackEntry?.destination?.hierarchy?.any { it.route == screen.route } == true
 
                                                     if (screen.route == Screens.Search.route) {
-                                                        onActiveChange(true)
-                                                        coroutineScope.launch {
-                                                            delay(100)
-                                                            try {
-                                                                searchBarFocusRequester.requestFocus()
-                                                            } catch (_: Exception) {
+                                                        if (!active) {
+                                                            onActiveChange(true)
+                                                            coroutineScope.launch {
+                                                                delay(100)
+                                                                try {
+                                                                    searchBarFocusRequester.requestFocus()
+                                                                } catch (_: Exception) {
+                                                                }
                                                             }
-                                                        }
-                                                    } else if (isSelected) {
-                                                        navController.currentBackStackEntry?.savedStateHandle?.set("scrollToTop", true)
-                                                        coroutineScope.launch {
-                                                            searchBarScrollBehavior.state.resetHeightOffset()
                                                         }
                                                     } else {
-                                                        navController.navigate(screen.route) {
-                                                            popUpTo(navController.graph.startDestinationId) {
-                                                                saveState = true
+                                                        if (active) {
+                                                            onActiveChange(false)
+                                                        }
+                                                        if (isSelected) {
+                                                            navController.currentBackStackEntry?.savedStateHandle?.set("scrollToTop", true)
+                                                            coroutineScope.launch {
+                                                                searchBarScrollBehavior.state.resetHeightOffset()
                                                             }
-                                                            launchSingleTop = true
-                                                            restoreState = true
+                                                        } else {
+                                                            navController.navigate(screen.route) {
+                                                                popUpTo(navController.graph.startDestinationId) {
+                                                                    saveState = true
+                                                                }
+                                                                launchSingleTop = true
+                                                                restoreState = true
+                                                            }
                                                         }
                                                     }
                                                 }
