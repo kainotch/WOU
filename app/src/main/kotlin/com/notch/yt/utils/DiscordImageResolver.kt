@@ -26,8 +26,8 @@ data class ResolvedDiscordImages(
 
 object DiscordImageResolver {
     private const val TAG = "DiscordImageResolver"
-    private const val RESOLUTION_TIMEOUT_MS = 8000L
-    private const val SINGLE_IMAGE_TIMEOUT_MS = 5000L
+    private const val RESOLUTION_TIMEOUT_MS = 5000L
+    private const val SINGLE_IMAGE_TIMEOUT_MS = 3000L
 
     private val repository = KizzyRepository()
 
@@ -70,9 +70,21 @@ object DiscordImageResolver {
         val savedArtwork = ArtworkStorage.findBySongId(context, songId)
         
         var thumbnailResolved: String? = savedArtwork?.thumbnail?.takeIf { it.isNotBlank() && it.isResolvedId() }
-            ?: thumbnailUrl
         var artistResolved: String? = savedArtwork?.artist?.takeIf { it.isNotBlank() && it.isResolvedId() }
-            ?: artistUrl
+
+        if (thumbnailResolved != null) {
+            thumbnailUrl?.let { repository.putToCache(it, thumbnailResolved!!) }
+        }
+        if (artistResolved != null) {
+            artistUrl?.let { repository.putToCache(it, artistResolved!!) }
+        }
+
+        if (thumbnailResolved == null && thumbnailUrl != null) {
+            thumbnailResolved = resolveImageUrl(thumbnailUrl)
+        }
+        if (artistResolved == null && artistUrl != null) {
+            artistResolved = resolveImageUrl(artistUrl)
+        }
 
         val result = ResolvedDiscordImages(
             thumbnailOriginalUrl = thumbnailUrl,
@@ -179,7 +191,7 @@ object DiscordImageResolver {
     }
 
     private fun String.isResolvedId(): Boolean {
-        return startsWith("mp:") || startsWith("b7.") || 
+        return startsWith("mp:") || startsWith("external/") || startsWith("attachments/") || startsWith("b7.") || 
                (startsWith("http") && contains("discord"))
     }
 }

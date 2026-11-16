@@ -31,9 +31,9 @@ class ApiService {
             })
         }
         install(HttpTimeout) {
-            connectTimeoutMillis = 30_000
-            requestTimeoutMillis = 30_000
-            socketTimeoutMillis = 30_000
+            connectTimeoutMillis = 8_000
+            requestTimeoutMillis = 8_000
+            socketTimeoutMillis = 8_000
         }
         install(HttpCache)
     }
@@ -46,6 +46,6 @@ class ApiService {
     }
 
     companion object {
-        const val BASE_URL = "https://metrolist-discord-rpc-api.fullerbread2032.workers.dev"
+        const val BASE_URL = "https://kizzy-api.cjjdxhdjd.workers.dev"
     }
 }

@@ -29,10 +29,7 @@ sealed class RpcImage {
             if (image.startsWith("mp:") || image.startsWith("external/") || image.startsWith("attachments/")) {
                 return if (image.startsWith("mp:")) image else "mp:$image"
             }
-            if (image.startsWith("http://", ignoreCase = true) || image.startsWith("https://", ignoreCase = true)) {
-                return image
-            }
-            return repository.peekCache(image) ?: image
+            return repository.getImage(image) ?: repository.peekCache(image) ?: image
         }
     }
 }
