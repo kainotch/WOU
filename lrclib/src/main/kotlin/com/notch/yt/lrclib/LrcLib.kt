@@ -50,17 +50,39 @@ object LrcLib {
         }
     }
 
+    private fun cleanTitle(title: String): String {
+        val cleaned = title
+            .replace(Regex("""(?i)\s*[\(\[][^)\]]*(?:official|video|audio|visualizer|mv|lyric|remastered|4k|hd|live)[^)\]]*[\)\]]"""), "")
+            .replace(Regex("""(?i)\s*\|\s*.*"""), "")
+            .replace(Regex("""(?i)\s*-\s*(?:official|music\s*video|lyrics?).*"""), "")
+            .trim()
+        return cleaned.ifEmpty { title }
+    }
+
     private suspend fun queryLyrics(
         artist: String,
         title: String,
         album: String? = null,
-    ) = client
-        .get("/api/search") {
-            parameter("track_name", title)
-            parameter("artist_name", artist)
-            if (album != null) parameter("album_name", album)
-        }.body<List<Track>>()
-        .filter { it.syncedLyrics != null }
+    ): List<Track> {
+        val cleaned = cleanTitle(title)
+        val initial = client
+            .get("/api/search") {
+                parameter("track_name", cleaned)
+                parameter("artist_name", artist)
+                if (album != null) parameter("album_name", album)
+            }.body<List<Track>>()
+            .filter { it.syncedLyrics != null }
+
+        if (initial.isNotEmpty() || cleaned == title) return initial
+
+        return client
+            .get("/api/search") {
+                parameter("track_name", title)
+                parameter("artist_name", artist)
+                if (album != null) parameter("album_name", album)
+            }.body<List<Track>>()
+            .filter { it.syncedLyrics != null }
+    }
 
     suspend fun getLyrics(
         title: String,

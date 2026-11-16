@@ -164,7 +164,7 @@ fun LyricsScreen(
     LaunchedEffect(mediaMetadata.id, currentLyrics) {
         if (currentLyrics == null) {
             // Small delay to ensure database state is stable
-            delay(500)
+            delay(100)
             
             coroutineScope.launch(Dispatchers.IO) {
                 try {

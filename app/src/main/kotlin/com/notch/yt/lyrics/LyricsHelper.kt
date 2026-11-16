@@ -38,12 +38,12 @@ constructor(
 ) {
     private val baseProviders =
         listOf(
-            SimpMusicLyricsProvider,
-            BetterLyricsProvider,
             LrcLibLyricsProvider,
             KuGouLyricsProvider,
             YouTubeSubtitleLyricsProvider,
             YouTubeLyricsProvider,
+            BetterLyricsProvider,
+            SimpMusicLyricsProvider,
         )
 
     private val cache = LruCache<String, List<LyricsResult>>(MAX_CACHE_SIZE)

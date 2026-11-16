@@ -79,16 +79,18 @@ class LyricsPreloadManager @Inject constructor(
                 
                 val preloadCount = preferences[QueueLyricsPreloadCountKey] ?: DEFAULT_PRELOAD_COUNT
                 
-                // Get next N songs after current index
+                // Pre-load current song and next N songs
+                val currentSong = queue.getOrNull(currentIndex)?.let { listOf(it) } ?: emptyList()
                 val nextSongs = getNextSongs(queue, currentIndex, preloadCount)
+                val songsToPreload = currentSong + nextSongs
                 
-                if (nextSongs.isEmpty()) {
+                if (songsToPreload.isEmpty()) {
                     Log.d(TAG, "No songs to pre-load")
                     return@launch
                 }
                 
-                Log.d(TAG, "Starting pre-load for ${nextSongs.size} songs")
-                preloadLyrics(nextSongs)
+                Log.d(TAG, "Starting pre-load for ${songsToPreload.size} songs")
+                preloadLyrics(songsToPreload)
                 
             } catch (e: Exception) {
                 reportException(e)
@@ -163,7 +165,7 @@ class LyricsPreloadManager @Inject constructor(
         val lyricsHelper = LyricsHelper(context, networkConnectivity)
         
         return try {
-            lyricsHelper.getLyrics(song, preferredProviderOnly = true)
+            lyricsHelper.getLyrics(song, preferredProviderOnly = false)
         } catch (e: Exception) {
             Log.w(TAG, "Error fetching lyrics for ${song.title}: ${e.message}")
             null

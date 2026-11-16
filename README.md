@@ -182,7 +182,7 @@ If you enjoy using **WOU**, consider sponsoring the project on GitHub:
 Have a feature request, found a bug, or just want to share your favorite music setups? Join the official WOU community!
 
 * **Discord:** [Join the WOU Server](https://discord.com/invite/qybFSATs7Q)
-* **Instagram:** [@notchkai](https://www.instagram.com/notchkai/)
+* **Instagram:** [@kainotch](https://www.instagram.com/kainotch/)
 * **GitHub Discussions:** [Open a Discussion](https://github.com/kainotch/WOU/discussions)
 
 

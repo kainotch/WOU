@@ -161,8 +161,8 @@ fun AboutScreen(
                 AboutItemCard(
                     iconRes = R.drawable.instagram,
                     title = "Instagram",
-                    subtitle = "@notchkai",
-                    onClick = { uriHandler.openUri("https://www.instagram.com/notchkai/") }
+                    subtitle = "@kainotch",
+                    onClick = { uriHandler.openUri("https://www.instagram.com/kainotch/") }
                 )
                 Spacer(Modifier.height(24.dp))
 

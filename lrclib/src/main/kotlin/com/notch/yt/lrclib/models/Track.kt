@@ -33,7 +33,7 @@ internal fun List<Track>.bestMatchingFor(
     }
 
     return minByOrNull { abs(it.duration.toInt() - duration) }
-        ?.takeIf { abs(it.duration.toInt() - duration) <= 2 }
+        ?.takeIf { abs(it.duration.toInt() - duration) <= 4 }
 }
 
 private fun List<Track>.findBestMatch(trackName: String, artistName: String): Track? {
