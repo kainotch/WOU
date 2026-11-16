@@ -160,10 +160,10 @@ fun LyricsScreen(
     val currentLyrics by playerConnection.currentLyrics.collectAsState(initial = null)
     val (useLyricsV2) = rememberPreference(UseLyricsV2Key, defaultValue = false)
 
-    // Auto-fetch lyrics when no lyrics found (same logic as refetch)
-    LaunchedEffect(mediaMetadata.id, currentLyrics) {
-        if (currentLyrics == null) {
-            coroutineScope.launch(Dispatchers.IO) {
+    // Auto-fetch lyrics when no lyrics found or previous attempt was not found
+    LaunchedEffect(mediaMetadata.id) {
+        if (currentLyrics == null || currentLyrics?.lyrics == LyricsEntity.LYRICS_NOT_FOUND) {
+            withContext(Dispatchers.IO) {
                 try {
                     // Get LyricsHelper from Hilt
                     val entryPoint = EntryPointAccessors.fromApplication(
@@ -175,9 +175,11 @@ fun LyricsScreen(
                     // Fetch lyrics automatically
                     val lyrics = lyricsHelper.getLyrics(mediaMetadata)
                     
-                    // Save to database
-                    database.query {
-                        upsert(LyricsEntity(mediaMetadata.id, lyrics))
+                    if (lyrics != LyricsEntity.LYRICS_NOT_FOUND || currentLyrics == null) {
+                        // Save to database
+                        database.query {
+                            upsert(LyricsEntity(mediaMetadata.id, lyrics))
+                        }
                     }
                 } catch (e: Exception) {
                     // Handle error silently - user can manually refetch if needed

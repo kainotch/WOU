@@ -813,7 +813,8 @@ fun Lyrics(
             .padding(bottom = 12.dp)
     ) {
 
-        if (lyrics == LYRICS_NOT_FOUND) {
+        val hasNoVisibleLyrics = lyrics == LYRICS_NOT_FOUND || (lyrics != null && lines.none { it.text.isNotBlank() })
+        if (hasNoVisibleLyrics) {
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
@@ -821,10 +822,9 @@ fun Lyrics(
                 Text(
                     text = stringResource(R.string.lyrics_not_found),
                     fontSize = 20.sp,
-                    color = MaterialTheme.colorScheme.secondary,
+                    color = textColor.copy(alpha = 0.7f),
                     textAlign = TextAlign.Center,
                     fontWeight = FontWeight.Bold,
-                    modifier = Modifier.alpha(0.5f)
                 )
             }
         } else {

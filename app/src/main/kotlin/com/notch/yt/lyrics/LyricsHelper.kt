@@ -57,11 +57,27 @@ constructor(
 
     private fun cleanSongTitle(title: String): String {
         val cleaned = title
-            .replace(Regex("""(?i)\s*[\(\[](?:(?:official\s*)?(?:music\s*)?(?:video|audio|visualizer|mv|lyric\s*video|lyrics?)|remastered|4k|hd|live)[\)\]]"""), "")
+            .replace(Regex("""(?i)\s*[\(\[](?:(?:official\s*)?(?:music\s*)?(?:video|audio|visualizer|mv|lyric\s*video|lyrics?)|remastered|4k|hd|live|slowed(?:\s*\+\s*reverb)?|sped\s*up|bass\s*boosted|clean(?:\s*loop)?|\d+\s*(?:hour|min|k)|prod\.?.*|feat\.?.*|ft\.?.*)[\)\]]"""), "")
             .replace(Regex("""(?i)\s*\|\s*(?:(?:official\s*)?(?:music\s*)?(?:video|audio|visualizer|mv|lyric\s*video|lyrics?)|remastered|4k|hd|live).*"""), "")
             .replace(Regex("""(?i)\s*-\s*(?:(?:official\s*)?(?:music\s*)?(?:video|audio|visualizer|mv|lyric\s*video|lyrics?)|remastered|4k|hd|live).*"""), "")
             .trim()
         return cleaned.ifEmpty { title }
+    }
+
+    private fun cleanArtists(artists: List<MediaMetadata.Artist>): String {
+        return artists
+            .map { it.name.trim() }
+            .filter { name ->
+                name.isNotBlank() &&
+                !name.equals("Video", ignoreCase = true) &&
+                !name.equals("Episode", ignoreCase = true) &&
+                !name.equals("Song", ignoreCase = true) &&
+                !name.equals("Topic", ignoreCase = true) &&
+                !name.equals("Various Artists", ignoreCase = true) &&
+                !name.matches(Regex("""(?i)^\d+(?:\.\d+)?[kmb]?\s+views$""")) &&
+                !name.matches(Regex("""(?i)^\d+:\d+(?:\s*views)?$"""))
+            }
+            .joinToString(", ")
     }
 
     private fun isSyncedLyrics(lyrics: String): Boolean {
@@ -74,37 +90,61 @@ constructor(
         provider: LyricsProvider,
         mediaMetadata: MediaMetadata,
         cleanTitle: String,
-        artistString: String,
+        cleanArtist: String,
         timeoutMs: Long,
     ): String? {
         return withTimeoutOrNull(timeoutMs) {
             try {
-                // Try cleanTitle first
-                val result = provider.getLyrics(
+                // 1. Try cleanTitle with cleanArtist
+                val res1 = provider.getLyrics(
                     mediaMetadata.id,
                     cleanTitle,
-                    artistString,
+                    cleanArtist,
                     mediaMetadata.album?.title,
                     mediaMetadata.duration,
-                )
-                val lyrics = result.getOrNull()
-                if (lyrics != null && isMeaningfulLyrics(lyrics)) {
-                    return@withTimeoutOrNull lyrics
-                }
+                ).getOrNull()
+                if (res1 != null && isMeaningfulLyrics(res1)) return@withTimeoutOrNull res1
 
-                // If cleanTitle was different from raw title and failed, try raw title
-                if (cleanTitle != mediaMetadata.title) {
-                    val rawResult = provider.getLyrics(
+                // 2. If cleanArtist was non-blank, try without artist (title only)
+                if (cleanArtist.isNotBlank()) {
+                    val res2 = provider.getLyrics(
                         mediaMetadata.id,
-                        mediaMetadata.title,
-                        artistString,
+                        cleanTitle,
+                        "",
                         mediaMetadata.album?.title,
                         mediaMetadata.duration,
-                    )
-                    rawResult.getOrNull()?.takeIf { isMeaningfulLyrics(it) }
-                } else {
-                    null
+                    ).getOrNull()
+                    if (res2 != null && isMeaningfulLyrics(res2)) return@withTimeoutOrNull res2
                 }
+
+                // 3. If cleanTitle contains " X " / " x " (mashup/remix), try base title before " X "
+                if (cleanTitle.contains(Regex("""\s+[xX]\s+"""))) {
+                    val baseTitle = cleanTitle.split(Regex("""\s+[xX]\s+"""), limit = 2)[0].trim()
+                    if (baseTitle.isNotBlank()) {
+                        val res3 = provider.getLyrics(
+                            mediaMetadata.id,
+                            baseTitle,
+                            cleanArtist,
+                            mediaMetadata.album?.title,
+                            mediaMetadata.duration,
+                        ).getOrNull()
+                        if (res3 != null && isMeaningfulLyrics(res3)) return@withTimeoutOrNull res3
+                    }
+                }
+
+                // 4. If cleanTitle differs from raw title, try raw title
+                if (cleanTitle != mediaMetadata.title) {
+                    val res4 = provider.getLyrics(
+                        mediaMetadata.id,
+                        mediaMetadata.title,
+                        cleanArtist,
+                        mediaMetadata.album?.title,
+                        mediaMetadata.duration,
+                    ).getOrNull()
+                    if (res4 != null && isMeaningfulLyrics(res4)) return@withTimeoutOrNull res4
+                }
+
+                null
             } catch (e: Exception) {
                 null
             }
@@ -140,11 +180,19 @@ constructor(
             return LYRICS_NOT_FOUND
         }
 
-        val cleanTitle = cleanSongTitle(mediaMetadata.title)
-        val artistString = mediaMetadata.artists.joinToString { it.name }
+        var cleanArtist = cleanArtists(mediaMetadata.artists)
+        var cleanTitle = cleanSongTitle(mediaMetadata.title)
+
+        if (cleanArtist.isBlank() && " - " in cleanTitle) {
+            val parts = cleanTitle.split(" - ", limit = 2)
+            if (parts.size == 2 && parts[0].isNotBlank() && parts[1].isNotBlank()) {
+                cleanArtist = parts[0].trim()
+                cleanTitle = parts[1].trim()
+            }
+        }
 
         if (preferredProviderOnly || enabledProviders.size == 1) {
-            val winner = fetchFromProvider(enabledProviders.first(), mediaMetadata, cleanTitle, artistString, 4500L)
+            val winner = fetchFromProvider(enabledProviders.first(), mediaMetadata, cleanTitle, cleanArtist, 4000L)
             val result = winner ?: LYRICS_NOT_FOUND
             if (result != LYRICS_NOT_FOUND) {
                 cache.put(mediaMetadata.id, listOf(LyricsResult(enabledProviders.first().name, result)))
@@ -164,27 +212,29 @@ constructor(
 
         fun launchProvider(provider: LyricsProvider) {
             val job = scope.launch {
-                val lyrics = fetchFromProvider(provider, mediaMetadata, cleanTitle, artistString, 4500L)
-                if (lyrics != null && isMeaningfulLyrics(lyrics)) {
-                    val result = LyricsResult(provider.name, lyrics)
-                    if (isSyncedLyrics(lyrics)) {
-                        winner.complete(result)
-                    } else {
-                        fallbackPlainLyrics.compareAndSet(null, result)
+                try {
+                    val lyrics = fetchFromProvider(provider, mediaMetadata, cleanTitle, cleanArtist, 3500L)
+                    if (lyrics != null && isMeaningfulLyrics(lyrics)) {
+                        val result = LyricsResult(provider.name, lyrics)
+                        if (isSyncedLyrics(lyrics)) {
+                            winner.complete(result)
+                        } else {
+                            fallbackPlainLyrics.compareAndSet(null, result)
+                        }
                     }
-                }
+                } catch (_: Exception) {
+                } finally {
+                    if (provider == preferred && !winner.isCompleted) {
+                        startOthersTrigger.complete(Unit)
+                    }
 
-                // If preferred provider completed without synced lyrics, trigger others immediately
-                if (provider == preferred && !winner.isCompleted) {
-                    startOthersTrigger.complete(Unit)
-                }
-
-                if (pendingCount.decrementAndGet() == 0 && !winner.isCompleted) {
-                    val fallback = fallbackPlainLyrics.get()
-                    if (fallback != null) {
-                        winner.complete(fallback)
-                    } else {
-                        winner.complete(LyricsResult("None", LYRICS_NOT_FOUND))
+                    if (pendingCount.decrementAndGet() == 0 && !winner.isCompleted) {
+                        val fallback = fallbackPlainLyrics.get()
+                        if (fallback != null) {
+                            winner.complete(fallback)
+                        } else {
+                            winner.complete(LyricsResult("None", LYRICS_NOT_FOUND))
+                        }
                     }
                 }
             }
@@ -194,9 +244,9 @@ constructor(
         // Launch preferred provider immediately
         launchProvider(preferred)
 
-        // Launch supervisor to trigger others either after 600ms headstart or as soon as preferred fails
+        // Launch supervisor to trigger others either after 400ms headstart or as soon as preferred finishes
         val orchestratorJob = scope.launch {
-            withTimeoutOrNull(600L) {
+            withTimeoutOrNull(400L) {
                 startOthersTrigger.await()
             }
             if (!winner.isCompleted) {
@@ -206,7 +256,7 @@ constructor(
         allJobs.add(orchestratorJob)
 
         val finalResult = try {
-            withTimeoutOrNull(5500L) {
+            withTimeoutOrNull(4500L) {
                 winner.await()
             } ?: fallbackPlainLyrics.get() ?: LyricsResult("None", LYRICS_NOT_FOUND)
         } catch (e: Exception) {
@@ -251,14 +301,23 @@ constructor(
             return
         }
 
-        val cleanTitle = cleanSongTitle(songTitle)
+        val cleanArtist = if (songArtists.matches(Regex("""(?i).*\b(?:views|video|episode)\b.*"""))) "" else songArtists
+        var effTitle = cleanSongTitle(songTitle)
+        var effArtist = cleanArtist
+        if (effArtist.isBlank() && " - " in effTitle) {
+            val parts = effTitle.split(" - ", limit = 2)
+            if (parts.size == 2 && parts[0].isNotBlank() && parts[1].isNotBlank()) {
+                effArtist = parts[0].trim()
+                effTitle = parts[1].trim()
+            }
+        }
         val allResult = mutableListOf<LyricsResult>()
         val providers = orderedProviders()
         currentLyricsJob = CoroutineScope(SupervisorJob() + Dispatchers.IO).async {
             providers.forEach { provider ->
                 if (provider.isEnabled(context)) {
                     try {
-                        provider.getAllLyrics(mediaId, cleanTitle, songArtists, songAlbum, duration) lyricsCallback@{ lyrics ->
+                        provider.getAllLyrics(mediaId, effTitle, effArtist, songAlbum, duration) lyricsCallback@{ lyrics ->
                             if (!isMeaningfulLyrics(lyrics)) return@lyricsCallback
                             val result = LyricsResult(provider.name, lyrics)
                             allResult += result
