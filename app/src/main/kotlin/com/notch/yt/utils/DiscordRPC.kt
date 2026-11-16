@@ -30,7 +30,7 @@ class DiscordRPC(
         private const val PAUSE_IMAGE_URL =
             "mp:external/5fs4qAJvHUnOixpejvI6D3P3QI0ubhmCYSWfIOjA5CE/https/raw.githubusercontent.com/kainotch/WOU/main/fastlane/metadata/android/en-US/images/RPC/pause_icon.png"
         private const val APP_ICON_URL = 
-            "mp:external/hWW0ZzADO8ayUh1lzGgT4RE4I7V0JUrZRPFB8OUUdSs/https/raw.githubusercontent.com/kainotch/WOU/main/fastlane/metadata/android/en-US/images/icon.png"
+            "mp:external/bqCD6gmZksMbz7Mtg_1J31x063IxG7njGfejco5iS24/https/raw.githubusercontent.com/kainotch/WOU/main/app/src/main/ic_launcher-playstore.png"
         private const val logtag = "DiscordRPC"
     }
 

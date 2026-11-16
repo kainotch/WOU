@@ -159,7 +159,7 @@ object DiscordImageResolver {
                     ?: song.artists.firstOrNull()?.thumbnailUrl?.takeIf { it.isValidHttpUrl() }?.let { RpcImage.ExternalImage(it) }
             }
             "appicon" -> {
-                RpcImage.DiscordImage("external/hWW0ZzADO8ayUh1lzGgT4RE4I7V0JUrZRPFB8OUUdSs/https/raw.githubusercontent.com/kainotch/WOU/main/fastlane/metadata/android/en-US/images/icon.png")
+                RpcImage.DiscordImage("external/bqCD6gmZksMbz7Mtg_1J31x063IxG7njGfejco5iS24/https/raw.githubusercontent.com/kainotch/WOU/main/app/src/main/ic_launcher-playstore.png")
             }
             "custom" -> {
                 val url = customUrl?.takeIf { it.isNotBlank() && it.isValidHttpUrl() }
