@@ -41,7 +41,7 @@ wou follows a strict **Clean Architecture** approach. This separation of concern
 
 1. **Clone the Source:**
 ```bash
-git clone https://github.com/notchvishwakarma00/wou.git
+git clone https://github.com/kainotch/WOU.git
 cd wou
 
 ```

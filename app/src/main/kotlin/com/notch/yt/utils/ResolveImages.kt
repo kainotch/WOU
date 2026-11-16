@@ -194,4 +194,4 @@ suspend fun resolveAndPersistImages(context: Context, song: Song, isPaused: Bool
 }
 
 // Pause image constant reused from DiscordRPC companion
-private const val PAUSE_IMAGE_URL = "https://raw.githubusercontent.com/notchvishwakarma00/wou/main/fastlane/metadata/android/en-US/images/RPC/pause_icon.png"
+private const val PAUSE_IMAGE_URL = "mp:external/5fs4qAJvHUnOixpejvI6D3P3QI0ubhmCYSWfIOjA5CE/https/raw.githubusercontent.com/kainotch/WOU/main/fastlane/metadata/android/en-US/images/RPC/pause_icon.png"

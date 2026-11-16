@@ -141,7 +141,7 @@ fun AboutScreen(
                     iconUrl = "https://avatars.githubusercontent.com/u/252353194?v=4",
                     title = "Notch",
                     subtitle = "App Developer",
-                    onClick = { uriHandler.openUri("https://github.com/GigaNotch") }
+                    onClick = { uriHandler.openUri("https://github.com/kainotch") }
                 )
                 Spacer(Modifier.height(24.dp))
             }

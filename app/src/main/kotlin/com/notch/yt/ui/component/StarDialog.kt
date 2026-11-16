@@ -65,7 +65,7 @@ fun StarDialog(
                     try {
                         val intent = Intent(
                             Intent.ACTION_VIEW,
-                            Uri.parse("https://github.com/GigaNotch/wou-main")
+                            Uri.parse("https://github.com/kainotch/WOU")
                         )
                         context.startActivity(intent)
                     } catch (e: Exception) {
@@ -86,7 +86,7 @@ fun StarDialog(
                     try {
                         val intent = Intent(
                             Intent.ACTION_VIEW,
-                            Uri.parse("https://github.com/GigaNotch/wou-main")
+                            Uri.parse("https://github.com/kainotch/WOU")
                         )
                         context.startActivity(intent)
                     } catch (e: Exception) {

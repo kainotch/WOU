@@ -88,7 +88,7 @@ object Updater {
         cachedEtag: String?,
     ): ReleasesNetworkResult {
         val response: HttpResponse =
-            client.get("https://api.github.com/repos/notchvishwakarma00/wou/releases?per_page=$perPage") {
+            client.get("https://api.github.com/repos/kainotch/WOU/releases?per_page=$perPage") {
                 headers {
                     append("Accept", "application/vnd.github+json")
                     append("User-Agent", "wou")
@@ -140,10 +140,10 @@ object Updater {
             latest
         }
 
-    suspend fun getCommitHistory(count: Int = 20, branch: String = "dev"): Result<List<GitCommit>> =
+    suspend fun getCommitHistory(count: Int = 20, branch: String = "main"): Result<List<GitCommit>> =
         runCatching {
             val response =
-                client.get("https://api.github.com/repos/notchvishwakarma00/wou/commits?sha=$branch&per_page=$count")
+                client.get("https://api.github.com/repos/kainotch/WOU/commits?sha=$branch&per_page=$count")
                     .bodyAsText()
             val jsonArray = JSONArray(response)
             val commits = mutableListOf<GitCommit>()
@@ -165,7 +165,7 @@ object Updater {
         }
 
     fun getLatestDownloadUrl(): String {
-        val baseUrl = "https://github.com/notchvishwakarma00/wou/releases/latest/download/"
+        val baseUrl = "https://github.com/kainotch/WOU/releases/latest/download/"
         val architecture = BuildConfig.ARCHITECTURE
         return if (architecture == "universal") {
             baseUrl + "wou.apk"

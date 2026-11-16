@@ -25,14 +25,14 @@ __        _____  _   _
 <div align="center">
 
   <!-- Obtainium Button -->
-  <a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/notch/WOU">
+  <a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/kainotch/WOU">
     <img src="https://raw.githubusercontent.com/ImranR98/Obtainium/main/assets/graphics/badge_obtainium.png" height="50" alt="Get WOU on Obtainium">
   </a>
   
   &nbsp;&nbsp;&nbsp;&nbsp; <!-- This adds a little space between the buttons -->
 
   <!-- GitHub Release Button -->
-  <a href="https://github.com/notch/WOU/releases/latest">
+  <a href="https://github.com/kainotch/WOU/releases/latest">
     <img src="https://img.shields.io/badge/Download_Latest-GitHub-18181B?style=for-the-badge&logo=github&logoColor=white" height="50" alt="Get WOU on GitHub">
   </a>
 
@@ -156,7 +156,7 @@ Android SDK 34+ \
 Run Locally\
 Bash
 ```
-git clone https://github.com/notch/WOU.git
+git clone https://github.com/kainotch/WOU.git
 cd WOU
 ```
 Open in Android Studio → Sync → Run ▶ \
@@ -183,7 +183,7 @@ Have a feature request, found a bug, or just want to share your favorite music s
 
 * **Discord:** [Join the WOU Server](https://discord.com/invite/qybFSATs7Q)
 * **Instagram:** [@notchkai](https://www.instagram.com/notchkai/)
-* **GitHub Discussions:** [Open a Discussion](https://github.com/notch/WOU/discussions)
+* **GitHub Discussions:** [Open a Discussion](https://github.com/kainotch/WOU/discussions)
 
 
 
