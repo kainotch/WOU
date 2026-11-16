@@ -163,7 +163,7 @@ class LyricsPreloadManager @Inject constructor(
         val lyricsHelper = LyricsHelper(context, networkConnectivity)
         
         return try {
-            lyricsHelper.getLyrics(song, preferredProviderOnly = true)
+            lyricsHelper.getLyrics(song, preferredProviderOnly = false)
         } catch (e: Exception) {
             Log.w(TAG, "Error fetching lyrics for ${song.title}: ${e.message}")
             null

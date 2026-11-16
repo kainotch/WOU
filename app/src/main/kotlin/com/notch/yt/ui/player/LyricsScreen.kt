@@ -163,9 +163,6 @@ fun LyricsScreen(
     // Auto-fetch lyrics when no lyrics found (same logic as refetch)
     LaunchedEffect(mediaMetadata.id, currentLyrics) {
         if (currentLyrics == null) {
-            // Small delay to ensure database state is stable
-            delay(500)
-            
             coroutineScope.launch(Dispatchers.IO) {
                 try {
                     // Get LyricsHelper from Hilt
