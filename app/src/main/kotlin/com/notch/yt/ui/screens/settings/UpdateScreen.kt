@@ -395,7 +395,7 @@ fun UpdateScreen(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Text(
-                                text = BuildConfig.VERSION_NAME,
+                                text = "v${BuildConfig.VERSION_NAME.trim().removePrefix("v")}",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold
                             )

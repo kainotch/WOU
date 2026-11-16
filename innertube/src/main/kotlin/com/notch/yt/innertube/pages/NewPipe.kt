@@ -115,15 +115,20 @@ object NewPipeUtils {
                 url.toString()
             }
 
-            val resolvedUrl = runCatching {
-                retryWithBackoff(
-                    maxAttempts = 3,
-                    initialDelayMs = 250L,
-                    maxDelayMs = 2_000L
-                ) {
-                    YoutubeJavaScriptPlayerManager.getUrlWithThrottlingParameterDeobfuscated(videoId, url)
+            val resolvedUrl =
+                if (format.signatureCipher != null || format.cipher != null) {
+                    runCatching {
+                        retryWithBackoff(
+                            maxAttempts = 2,
+                            initialDelayMs = 150L,
+                            maxDelayMs = 1_000L
+                        ) {
+                            YoutubeJavaScriptPlayerManager.getUrlWithThrottlingParameterDeobfuscated(videoId, url)
+                        }
+                    }.getOrElse { url }
+                } else {
+                    url
                 }
-            }.getOrElse { url }
 
             YouTube.appendGvsPoToken(resolvedUrl, client)
         }

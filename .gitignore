@@ -1,43 +1,152 @@
-
+# ====================================================================
+# Android & Gradle Build Artifacts (Debug, Release, Bundles, Dex)
+# ====================================================================
+# Build output folders across root and all subprojects
+build/
 **/build/
-/app/build
-/lrclib/build
-/kizzy/build
-/kugou/build
-/lastfm/build
-/betterlyrics/build
-/canvas/build
-/simpmusic/build
-/innertube/build
+/build/
+/app/build/
+/innertube/build/
+/lrclib/build/
+/kizzy/build/
+/kugou/build/
+/lastfm/build/
+/betterlyrics/build/
+/canvas/build/
+/simpmusic/build/
 
-# --- Standard Android Ignores ---
+# Binaries, packages, bundles & compiled bytecode
 *.apk
 *.ap_
 *.aab
 *.dex
 *.class
+*.so
 
-# Generated files & Gradle Cache
+# Build flavor / architecture output directories
+/app/universal/
+/app/arm64/
+/app/arm/
+/app/x86/
+/app/x86_64/
+/app/release/
+/app/debug/
+release/
+debug/
+**/release/
+**/debug/
+
+# Intermediates and generated compiler outputs
 bin/
 gen/
 out/
-.gradle/
-.kotlin/
-app/universal/release/
+captures/
+obj/
+intermediates/
+**/intermediates/
 
-# Local configuration file
+# ====================================================================
+# Logs, Dumps & Diagnostics
+# ====================================================================
+*.log
+*.log.*
+**/logs/
+outputs/logs/
+**/outputs/logs/
+*.hprof
+*.diag
+hs_err_pid*
+replay_pid*
+
+# ====================================================================
+# Gradle Daemon & Cache Files
+# ====================================================================
+.gradle/
+**/.gradle/
+buildOutputCleanup/
+gradle-app.setting
+!gradle/wrapper/gradle-wrapper.jar
+!gradle/wrapper/gradle-wrapper.properties
+
+# ====================================================================
+# Kotlin & Compiler Caches
+# ====================================================================
+.kotlin/
+**/.kotlin/
+*.kotlin_module
+.ksp/
+**/.ksp/
+kspCaches/
+**/kspCaches/
+
+# ====================================================================
+# Android Studio / IntelliJ IDEA Files
+# ====================================================================
+.idea/
+**/.idea/
+*.iml
+**/*.iml
+*.ipr
+*.iws
+.idea_modules/
+cmake-build-*/
+
+# ====================================================================
+# VS Code & Editor Backup Files
+# ====================================================================
+.vscode/
+**/.vscode/
+*~
+*.swp
+*.swo
+*.bak
+*.tmp
+*.patch
+*.diff
+
+# ====================================================================
+# OS-Specific Artifacts
+# ====================================================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+[Dd]esktop.ini
+
+# ====================================================================
+# Sensitive / Local Configuration & Keys (CRITICAL SECURITY)
+# ====================================================================
+# Local SDK and machine paths
 local.properties
 
-# Android Studio IDE files
-*.iml
-.idea/
-.DS_Store
-captures/
-
-# --- CRITICAL SECURITY ---
+# Keystores and signing certificates
 *.jks
 *.keystore
+*.p12
+*.key
+*.pem
+*.pk8
+signing.properties
+release-keystore.properties
+
+# Google Services & secrets
+google-services.json
+secrets.properties
+secure.properties
+*.private.properties
+
+# Exclude other local properties while keeping repo config
 *.properties
 !gradle.properties
- 
-/app/arm64/ 
+!gradle/wrapper/gradle-wrapper.properties
+
+# ====================================================================
+# Fastlane & Profiler Artifacts
+# ====================================================================
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/
+fastlane/test_output/

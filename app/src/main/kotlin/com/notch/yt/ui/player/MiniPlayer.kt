@@ -97,7 +97,7 @@ fun MiniPlayer(
     modifier: Modifier = Modifier,
     pureBlack: Boolean,
 ) {
-    val useNewMiniPlayerDesign by rememberPreference(UseNewMiniPlayerDesignKey, true)
+    val useNewMiniPlayerDesign by rememberPreference(UseNewMiniPlayerDesignKey, false)
 
     if (useNewMiniPlayerDesign) {
         NewMiniPlayer(

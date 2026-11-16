@@ -64,6 +64,7 @@ val StreamBypassProxyKey = booleanPreferencesKey("streamBypassProxy")
 val YtmSyncKey = booleanPreferencesKey("ytmSync")
 val SelectedYtmPlaylistsKey = stringPreferencesKey("ytm_selected_playlists")
 
+val JamDisplayNameKey = stringPreferencesKey("jam_display_name")
 val TogetherDisplayNameKey = stringPreferencesKey("together_display_name")
 val TogetherClientIdKey = stringPreferencesKey("together_client_id")
 val TogetherDefaultPortKey = intPreferencesKey("together_default_port")
@@ -100,6 +101,7 @@ enum class AudioQuality {
 val PlayerStreamClientKey = stringPreferencesKey("playerStreamClient")
 
 enum class PlayerStreamClient {
+    VISIONOS,
     ANDROID_VR,
     WEB_REMIX,
     IOS,

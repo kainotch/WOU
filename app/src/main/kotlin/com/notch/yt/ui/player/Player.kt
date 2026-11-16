@@ -110,6 +110,7 @@ import com.notch.yt.ui.component.LocalBottomSheetPageState
 import com.notch.yt.ui.component.LocalMenuState
 import com.notch.yt.ui.component.rememberBottomSheetState
 import com.notch.yt.ui.menu.PlayerMenu
+import com.notch.yt.ui.jam.WouJamSheet
 import com.notch.yt.ui.screens.settings.DarkMode
 import com.notch.yt.ui.theme.PlayerColorExtractor
 import com.notch.yt.ui.utils.ShowMediaInfo
@@ -144,7 +145,7 @@ fun BottomSheetPlayer(
 
     val (useNewMiniPlayerDesign) = rememberPreference(
         UseNewMiniPlayerDesignKey,
-        defaultValue = true
+        defaultValue = false
     )
 
     val playerBackground by rememberEnumPreference(
@@ -639,6 +640,9 @@ fun BottomSheetPlayer(
                                         onShowDetailsDialog = {
                                             bottomSheetPageState.show { ShowMediaInfo(metadata.id) }
                                         },
+                                        onShowJamSheet = {
+                                            bottomSheetPageState.show { WouJamSheet(onDismiss = bottomSheetPageState::dismiss) }
+                                        },
                                         onDismiss = menuState::dismiss
                                     )
                                 }
@@ -712,6 +716,9 @@ fun BottomSheetPlayer(
                                         playerBottomSheetState = state,
                                         onShowDetailsDialog = {
                                             bottomSheetPageState.show { ShowMediaInfo(metadata.id) }
+                                        },
+                                        onShowJamSheet = {
+                                            bottomSheetPageState.show { WouJamSheet(onDismiss = bottomSheetPageState::dismiss) }
                                         },
                                         onDismiss = menuState::dismiss
                                     )

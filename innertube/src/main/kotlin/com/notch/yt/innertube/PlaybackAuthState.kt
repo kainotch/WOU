@@ -86,7 +86,16 @@ data class PlaybackAuthState(
 
 private fun String?.normalizeAuthValue(): String? {
     val trimmed = this?.trim()
-    return trimmed?.takeIf { it.isNotEmpty() && !it.equals("null", ignoreCase = true) }
+    if (trimmed.isNullOrEmpty() || trimmed.equals("null", ignoreCase = true)) return null
+    return try {
+        if (trimmed.contains("%")) {
+            java.net.URLDecoder.decode(trimmed, "UTF-8")
+        } else {
+            trimmed
+        }
+    } catch (_: Exception) {
+        trimmed
+    }
 }
 
 private fun String?.normalizeDataSyncId(): String? {

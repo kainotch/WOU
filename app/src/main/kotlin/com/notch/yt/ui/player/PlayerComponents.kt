@@ -105,6 +105,7 @@ import com.notch.yt.ui.component.MenuState
 import com.notch.yt.ui.component.PlayerSliderTrack
 import com.notch.yt.ui.component.ResizableIconButton
 import com.notch.yt.ui.menu.PlayerMenu
+import com.notch.yt.ui.jam.WouJamSheet
 import com.notch.yt.ui.theme.PlayerBackgroundColorUtils
 import com.notch.yt.ui.theme.PlayerSliderColors
 import com.notch.yt.ui.utils.ShowMediaInfo
@@ -443,6 +444,11 @@ fun PlayerTopActions(
                                         }
                                     }
                                 },
+                                onShowJamSheet = {
+                                    bottomSheetPageState.show {
+                                        WouJamSheet(onDismiss = bottomSheetPageState::dismiss)
+                                    }
+                                },
                                 onDismiss = menuState::dismiss,
                             )
                         }
@@ -516,6 +522,11 @@ fun PlayerTopActions(
                                         bottomSheetPageState.show {
                                             ShowMediaInfo(it)
                                         }
+                                    }
+                                },
+                                onShowJamSheet = {
+                                    bottomSheetPageState.show {
+                                        WouJamSheet(onDismiss = bottomSheetPageState::dismiss)
                                     }
                                 },
                                 onDismiss = menuState::dismiss,

@@ -82,6 +82,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.util.lerp
 import com.notch.yt.constants.AppBarHeight
@@ -302,7 +303,7 @@ private fun SearchBarInputField(
                 },
             enabled = enabled,
             singleLine = true,
-            textStyle = LocalTextStyle.current.merge(TextStyle(color = textColor)),
+            textStyle = MaterialTheme.typography.bodyMedium.copy(color = textColor, fontSize = 14.sp),
             cursorBrush = SolidColor(colors.cursorColor),
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
             keyboardActions = KeyboardActions(onSearch = { onSearch(query.text) }),
@@ -332,9 +333,9 @@ private fun SearchBarInputField(
 }
 
 // Measurement specs
-val InputFieldHeight = 48.dp
+val InputFieldHeight = 44.dp
 private val SearchBarCornerRadius: Dp = InputFieldHeight / 2
-internal val SearchBarVerticalPadding: Dp = 8.dp
+internal val SearchBarVerticalPadding: Dp = 6.dp
 internal val SearchBarHorizontalPadding: Dp = 12.dp
 val SearchBarIconOffsetX: Dp = 4.dp
 private const val AnimationDurationMillis: Int = 300

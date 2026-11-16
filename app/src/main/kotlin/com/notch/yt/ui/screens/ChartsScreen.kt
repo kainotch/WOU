@@ -80,6 +80,12 @@ fun ChartsScreen(
         }
     }
 
+    LaunchedEffect(chartsPage) {
+        chartsPage?.sections?.firstOrNull()?.items?.take(3)?.forEach { item ->
+            playerConnection.prefetchStreamUrl(item.id)
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(

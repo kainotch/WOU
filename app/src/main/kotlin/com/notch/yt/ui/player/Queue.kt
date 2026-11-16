@@ -131,6 +131,7 @@ import com.notch.yt.ui.component.LocalBottomSheetPageState
 import com.notch.yt.ui.component.LocalMenuState
 import com.notch.yt.ui.component.MediaMetadataListItem
 import com.notch.yt.ui.menu.PlayerMenu
+import com.notch.yt.ui.jam.WouJamSheet
 import com.notch.yt.ui.menu.SelectionMediaMetadataMenu
 import com.notch.yt.ui.utils.ShowMediaInfo
 import com.notch.yt.utils.makeTimeString
@@ -275,6 +276,11 @@ fun Queue(
                                             }
                                         }
                                     },
+                                    onShowJamSheet = {
+                                        bottomSheetPageState.show {
+                                            WouJamSheet(onDismiss = bottomSheetPageState::dismiss)
+                                        }
+                                    },
                                     onDismiss = menuState::dismiss
                                 )
                             }
@@ -309,6 +315,11 @@ fun Queue(
                                             bottomSheetPageState.show {
                                                 ShowMediaInfo(it)
                                             }
+                                        }
+                                    },
+                                    onShowJamSheet = {
+                                        bottomSheetPageState.show {
+                                            WouJamSheet(onDismiss = bottomSheetPageState::dismiss)
                                         }
                                     },
                                     onDismiss = menuState::dismiss
@@ -548,6 +559,11 @@ fun Queue(
                                         }
                                     }
                                 },
+                                onShowJamSheet = {
+                                    bottomSheetPageState.show {
+                                        WouJamSheet(onDismiss = bottomSheetPageState::dismiss)
+                                    }
+                                },
                                 onDismiss = menuState::dismiss
                             )
                         }
@@ -680,6 +696,11 @@ fun Queue(
                                                                 bottomSheetPageState.show {
                                                                     ShowMediaInfo(it)
                                                                 }
+                                                            }
+                                                        },
+                                                        onShowJamSheet = {
+                                                            bottomSheetPageState.show {
+                                                                WouJamSheet(onDismiss = bottomSheetPageState::dismiss)
                                                             }
                                                         },
                                                         onDismiss = menuState::dismiss,
@@ -850,6 +871,11 @@ fun Queue(
                                                             bottomSheetPageState.show {
                                                                 ShowMediaInfo(it)
                                                             }
+                                                        }
+                                                    },
+                                                    onShowJamSheet = {
+                                                        bottomSheetPageState.show {
+                                                            WouJamSheet(onDismiss = bottomSheetPageState::dismiss)
                                                         }
                                                     },
                                                     onDismiss = menuState::dismiss,

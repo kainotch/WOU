@@ -167,13 +167,23 @@ Open in Android Studio → Sync → Run ▶ \
 
 ---
 
+## 💖 Support the Developer
+
+If you enjoy using **WOU**, consider sponsoring the project on GitHub:
+
+<a href="https://github.com/sponsors/kainotch">
+  <img src="https://img.shields.io/badge/Sponsor-GitHub%20Sponsors-EA4AAA?style=for-the-badge&logo=github-sponsors&logoColor=white" alt="Sponsor on GitHub">
+</a>
+
+---
+
 ## 💬 Community
 
-Have a feature request, found a bug,
-or just want to share your favorite music setups? Join the official WOU community!
+Have a feature request, found a bug, or just want to share your favorite music setups? Join the official WOU community!
 
-* *Discord:* Join the WOU Server
-* *GitHub Discussions:* Open a Discussion
+* **Discord:** [Join the WOU Server](https://discord.com/invite/qybFSATs7Q)
+* **Instagram:** [@notchkai](https://www.instagram.com/notchkai/)
+* **GitHub Discussions:** [Open a Discussion](https://github.com/notch/WOU/discussions)
 
 
 

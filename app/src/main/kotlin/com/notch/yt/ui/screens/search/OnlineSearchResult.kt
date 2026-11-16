@@ -11,6 +11,8 @@ package com.notch.yt.ui.screens.search
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -49,6 +51,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
@@ -124,6 +127,18 @@ fun OnlineSearchResult(
         }
     }
 
+    LaunchedEffect(searchSummary, itemsPage) {
+        val songsToPrefetch = if (searchFilter == null) {
+            searchSummary?.summaries?.flatMap { it.items }?.filterIsInstance<SongItem>()?.take(3)
+        } else {
+            itemsPage?.items?.filterIsInstance<SongItem>()?.take(3)
+        }
+        songsToPrefetch?.forEachIndexed { index, song ->
+            if (index > 0) kotlinx.coroutines.delay(200)
+            playerConnection.prefetchStreamUrl(song.id)
+        }
+    }
+
     val ytItemContent: @Composable LazyItemScope.(YTItem) -> Unit = { item: YTItem ->
         val longClick = {
             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -179,6 +194,15 @@ fun OnlineSearchResult(
             },
             modifier =
             Modifier
+                .pointerInput(item) {
+                    // Fire prefetch on first touch so stream URL resolves while finger is still down
+                    if (item is SongItem && item.id != mediaMetadata?.id) {
+                        awaitEachGesture {
+                            awaitFirstDown(requireUnconsumed = false)
+                            playerConnection.prefetchStreamUrl(item.id)
+                        }
+                    }
+                }
                 .combinedClickable(
                     onClick = {
                         when (item) {

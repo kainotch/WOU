@@ -41,7 +41,7 @@ object StreamClientUtils {
 
             c.startsWith("IOS", ignoreCase = true) -> YouTubeClient.IOS.userAgent
 
-            c.startsWith("ANDROID_VR", ignoreCase = true) -> YouTubeClient.ANDROID_VR_NO_AUTH.userAgent
+            c.startsWith("ANDROID_VR", ignoreCase = true) -> YouTubeClient.ANDROID_VR_1_61_48.userAgent
 
             c.equals("ANDROID_MUSIC", ignoreCase = true) -> YouTubeClient.ANDROID_MUSIC.userAgent
 

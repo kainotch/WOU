@@ -73,6 +73,12 @@ class HomeViewModel @Inject constructor(
     val recentActivity = MutableStateFlow<List<YTItem>?>(null)
     val recentPlaylistsDb = MutableStateFlow<List<Playlist>?>(null)
 
+    val localPlaylists = database.playlists(com.notch.yt.constants.PlaylistSortType.CREATE_DATE, true)
+        .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+
+    val likedSongsCount = database.likedSongsCount()
+        .stateIn(viewModelScope, SharingStarted.Lazily, 0)
+
     val allLocalItems = MutableStateFlow<List<LocalItem>>(emptyList())
     val allYtItems = MutableStateFlow<List<YTItem>>(emptyList())
 

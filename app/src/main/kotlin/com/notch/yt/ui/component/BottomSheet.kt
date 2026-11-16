@@ -315,19 +315,19 @@ fun rememberBottomSheetState(
     var previousAnchor by rememberSaveable {
         mutableIntStateOf(initialAnchor)
     }
+    val initialValue =
+        when (previousAnchor) {
+            EXPANDED_ANCHOR -> expandedBound
+            COLLAPSED_ANCHOR -> collapsedBound
+            DISMISSED_ANCHOR -> dismissedBound
+            else -> error("Unknown BottomSheet anchor")
+        }
     val animatable =
         remember {
-            Animatable(0.dp, Dp.VectorConverter)
+            Animatable(initialValue, Dp.VectorConverter)
         }
 
     return remember(dismissedBound, expandedBound, collapsedBound, coroutineScope) {
-        val initialValue =
-            when (previousAnchor) {
-                EXPANDED_ANCHOR -> expandedBound
-                COLLAPSED_ANCHOR -> collapsedBound
-                DISMISSED_ANCHOR -> dismissedBound
-                else -> error("Unknown BottomSheet anchor")
-            }
 
         animatable.updateBounds(dismissedBound.coerceAtMost(expandedBound), expandedBound)
         coroutineScope.launch(start = CoroutineStart.UNDISPATCHED) {

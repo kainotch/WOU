@@ -14,6 +14,7 @@ import com.notch.yt.innertube.models.WatchEndpoint
 import com.notch.yt.db.entities.AlbumWithSongs
 import com.notch.yt.extensions.toMediaItem
 import com.notch.yt.models.MediaMetadata
+import com.notch.yt.models.toMediaMetadata
 import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.withContext
 
@@ -21,7 +22,8 @@ class LocalAlbumRadio(
     private val albumWithSongs: AlbumWithSongs,
     private val startIndex: Int = 0,
 ) : Queue {
-    override val preloadItem: MediaMetadata? = null
+    override val preloadItem: MediaMetadata?
+        get() = albumWithSongs.songs.getOrNull(startIndex)?.toMediaMetadata()
 
     private lateinit var playlistId: String
     private val endpoint: WatchEndpoint

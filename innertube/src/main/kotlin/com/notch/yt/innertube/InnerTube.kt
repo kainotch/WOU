@@ -85,14 +85,18 @@ class InnerTube {
         }
 
         install(HttpTimeout) {
-            requestTimeoutMillis = 15000
-            connectTimeoutMillis = 10000
-            socketTimeoutMillis = 15000
+            requestTimeoutMillis = 8000
+            connectTimeoutMillis = 5000
+            socketTimeoutMillis = 8000
         }
 
-        if (proxy != null) {
-            engine {
+        engine {
+            if (this@InnerTube.proxy != null) {
                 proxy = this@InnerTube.proxy
+            }
+            config {
+                connectionPool(okhttp3.ConnectionPool(16, 5, java.util.concurrent.TimeUnit.MINUTES))
+                retryOnConnectionFailure(true)
             }
         }
 
@@ -107,8 +111,12 @@ class InnerTube {
             append("X-Goog-Api-Format-Version", "1")
             append("X-YouTube-Client-Name", client.clientId)
             append("X-YouTube-Client-Version", client.clientVersion)
-            append("X-Origin", YouTubeClient.ORIGIN_YOUTUBE_MUSIC)
-            append("Referer", YouTubeClient.REFERER_YOUTUBE_MUSIC)
+            if (client.clientName.startsWith("WEB", ignoreCase = true)) {
+                append("X-Origin", YouTubeClient.ORIGIN_YOUTUBE_MUSIC)
+                append("Referer", YouTubeClient.REFERER_YOUTUBE_MUSIC)
+            } else if (client.clientName.equals("VISIONOS", ignoreCase = true)) {
+                append("Origin", YouTubeClient.ORIGIN_YOUTUBE)
+            }
 
             authState.visitorData?.let { append("X-Goog-Visitor-Id", it) }
 
@@ -188,33 +196,46 @@ class InnerTube {
         signatureTimestamp: Int?,
         poToken: String? = null,
     ) = withRetry {
-        httpClient.post("player") {
-        ytClient(client, setLogin = true)
-        setBody(
-            PlayerBody(
-                context = client.toContext(locale, visitorData, dataSyncId).let {
-                    if (client.isEmbedded) {
-                        it.copy(
-                            thirdParty = Context.ThirdParty(
-                                embedUrl = "https://www.youtube.com/watch?v=${videoId}"
+        val playerEndpoint = if (client.clientName.startsWith("WEB", ignoreCase = true)) {
+            "player"
+        } else {
+            "https://www.youtube.com/youtubei/v1/player"
+        }
+        httpClient.post(playerEndpoint) {
+            ytClient(client, setLogin = true)
+            setBody(
+                PlayerBody(
+                    context = client.toContext(locale, visitorData, dataSyncId).let {
+                        if (client.isEmbedded) {
+                            it.copy(
+                                thirdParty = Context.ThirdParty(
+                                    embedUrl = "https://www.youtube.com/watch?v=${videoId}"
+                                )
+                            )
+                        } else it
+                    },
+                    videoId = videoId,
+                    playlistId = playlistId,
+                    playbackContext = if (signatureTimestamp != null) {
+                        PlayerBody.PlaybackContext(
+                            PlayerBody.PlaybackContext.ContentPlaybackContext(
+                                signatureTimestamp
                             )
                         )
-                    } else it
-                },
-                videoId = videoId,
-                playlistId = playlistId,
-                playbackContext = if (client.useSignatureTimestamp && signatureTimestamp != null) {
-                    PlayerBody.PlaybackContext(
-                        PlayerBody.PlaybackContext.ContentPlaybackContext(
-                            signatureTimestamp
+                    } else if (client.clientName.equals("VISIONOS", ignoreCase = true)) {
+                        PlayerBody.PlaybackContext(
+                            PlayerBody.PlaybackContext.ContentPlaybackContext(
+                                20767
+                            )
                         )
-                    )
-                } else null,
-                serviceIntegrityDimensions = poToken?.let {
-                    PlayerBody.ServiceIntegrityDimensions(poToken = it)
-                },
+                    } else null,
+                    serviceIntegrityDimensions = poToken?.let {
+                        PlayerBody.ServiceIntegrityDimensions(poToken = it)
+                    },
+                    contentCheckOk = true,
+                    racyCheckOk = true,
+                )
             )
-        )
         }
     }
 

@@ -101,8 +101,11 @@ fun HomeScreen(
     val explorePage by viewModel.explorePage.collectAsState()
     val forYouSuggestions by viewModel.forYouSuggestions.collectAsState()
 
-    val allLocalItems by viewModel.allLocalItems.collectAsState()
-    val allYtItems by viewModel.allYtItems.collectAsState()
+    val localPlaylists by viewModel.localPlaylists.collectAsState()
+    val likedSongsCount by viewModel.likedSongsCount.collectAsState()
+    val accountPlaylists by viewModel.accountPlaylists.collectAsState()
+    val similarRecommendations by viewModel.similarRecommendations.collectAsState()
+
     val selectedChip by viewModel.selectedChip.collectAsState()
 
     val isLoading: Boolean by viewModel.isLoading.collectAsState()
@@ -143,6 +146,18 @@ fun HomeScreen(
                     viewModel.loadMoreYouTubeItems(homePage?.continuation)
                 }
             }
+    }
+
+    LaunchedEffect(quickPicks) {
+        quickPicks?.take(4)?.forEach { song ->
+            playerConnection.prefetchStreamUrl(song.id)
+        }
+    }
+
+    LaunchedEffect(forYouSuggestions) {
+        forYouSuggestions?.take(3)?.forEach { song ->
+            playerConnection.prefetchStreamUrl(song.id)
+        }
     }
 
     if (selectedChip != null) {
@@ -295,82 +310,93 @@ fun HomeScreen(
                 )
             }
 
+            val likedSongsTitle = stringResource(R.string.liked_songs)
+            val spotifyGridItems = remember(
+                localPlaylists,
+                likedSongsCount,
+                accountPlaylists,
+                similarRecommendations,
+                homePage,
+                mediaMetadata?.id,
+                mediaMetadata?.album?.id,
+                isPlaying
+            ) {
+                buildSpotifyGridItems(
+                    likedSongsCount = likedSongsCount,
+                    likedSongsTitle = likedSongsTitle,
+                    localPlaylists = localPlaylists,
+                    accountPlaylists = accountPlaylists,
+                    similarRecommendations = similarRecommendations,
+                    homePage = homePage,
+                    mediaMetadata = mediaMetadata,
+                    isPlaying = isPlaying,
+                    navController = navController,
+                    playerConnection = playerConnection
+                )
+            }
+
             LazyColumn(
                 state = lazylistState,
                 contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues()
             ) {
                 if (showHomeCategoryChips) {
                     item {
-                        ChipsRow(
-                            chips = homePage?.chips.orEmpty().map { it to it.title },
-                            currentValue = selectedChip,
-                            onValueUpdate = {
-                                viewModel.toggleChip(it)
-                            }
+                        SpotifyTopBar(
+                            accountImageUrl = url,
+                            chips = homePage?.chips.orEmpty(),
+                            selectedChip = selectedChip,
+                            onSelectChip = { viewModel.toggleChip(it) },
+                            onProfileClick = { navController.navigate("settings") },
+                            modifier = Modifier.animateItem()
+                        )
+                    }
+                }
+
+                if (spotifyGridItems.isNotEmpty()) {
+                    item {
+                        SpotifyQuickGrid(
+                            items = spotifyGridItems,
+                            modifier = Modifier.animateItem()
+                        )
+                    }
+                }
+
+                keepListening?.takeIf { it.isNotEmpty() }?.let { items ->
+                    item {
+                        NavigationTitle(
+                            title = stringResource(R.string.keep_listening),
+                            modifier = Modifier.animateItem()
+                        )
+                    }
+
+                    item {
+                        KeepListeningSection(
+                            keepListening = items,
+                            mediaMetadata = mediaMetadata,
+                            isPlaying = isPlaying,
+                            navController = navController,
+                            playerConnection = playerConnection,
+                            menuState = menuState,
+                            haptic = haptic,
+                            scope = scope
                         )
                     }
                 }
 
                 quickPicks?.takeIf { it.isNotEmpty() }?.let { picks ->
-            /*
-                item {
-                    NavigationTitle(
-                        title = stringResource(R.string.quick_picks),
-                        modifier = Modifier.animateItem()
-                    )
+                    item {
+                        QuickPicksListSection(
+                            quickPicks = picks,
+                            mediaMetadata = mediaMetadata,
+                            isPlaying = isPlaying,
+                            navController = navController,
+                            playerConnection = playerConnection,
+                            menuState = menuState,
+                            haptic = haptic,
+                            modifier = Modifier.animateItem()
+                        )
+                    }
                 }
-            */
-
-                item {
-                    QuickPicksSection(
-                        quickPicks = picks,
-                        mediaMetadata = mediaMetadata,
-                        isPlaying = isPlaying,
-                        navController = navController,
-                        playerConnection = playerConnection,
-                        menuState = menuState,
-                        haptic = haptic
-                    )
-                }
-            }
-
-
-            quickPicks?.takeIf { it.isNotEmpty() }?.let { picks ->
-                item {
-                    QuickPicksListSection(
-                        quickPicks = picks,
-                        mediaMetadata = mediaMetadata,
-                        isPlaying = isPlaying,
-                        navController = navController,
-                        playerConnection = playerConnection,
-                        menuState = menuState,
-                        haptic = haptic,
-                        modifier = Modifier.animateItem()
-                    )
-                }
-            }
-
-            keepListening?.takeIf { it.isNotEmpty() }?.let { items ->
-                item {
-                    NavigationTitle(
-                        title = stringResource(R.string.keep_listening),
-                        modifier = Modifier.animateItem()
-                    )
-                }
-
-                item {
-                    KeepListeningSection(
-                        keepListening = items,
-                        mediaMetadata = mediaMetadata,
-                        isPlaying = isPlaying,
-                        navController = navController,
-                        playerConnection = playerConnection,
-                        menuState = menuState,
-                        haptic = haptic,
-                        scope = scope
-                    )
-                }
-            }
 
             AccountPlaylistsContainer(
                 viewModel = viewModel,
@@ -507,47 +533,6 @@ fun HomeScreen(
                 }
             }
             }
-
-            HideOnScrollFAB(
-                visible = allLocalItems.isNotEmpty() || allYtItems.isNotEmpty(),
-                lazyListState = lazylistState,
-                icon = R.drawable.shuffle,
-                onClick = {
-                    val local = when {
-                        allLocalItems.isNotEmpty() && allYtItems.isNotEmpty() -> Random.nextFloat() < 0.5
-                        allLocalItems.isNotEmpty() -> true
-                        else -> false
-                    }
-                    scope.launch(Dispatchers.Main) {
-                        if (local) {
-                            when (val luckyItem = allLocalItems.random()) {
-                                is Song -> playerConnection.playQueue(YouTubeQueue.radio(luckyItem.toMediaMetadata()))
-                                is Album -> {
-                                    val albumWithSongs = withContext(Dispatchers.IO) {
-                                        database.albumWithSongs(luckyItem.id).first()
-                                    }
-                                    albumWithSongs?.let {
-                                        playerConnection.playQueue(LocalAlbumRadio(it))
-                                    }
-                                }
-                                is Artist -> {}
-                                is Playlist -> {}
-                            }
-                        } else {
-                            when (val luckyItem = allYtItems.random()) {
-                                is SongItem -> playerConnection.playQueue(YouTubeQueue.radio(luckyItem.toMediaMetadata()))
-                                is AlbumItem -> playerConnection.playQueue(YouTubeAlbumRadio(luckyItem.playlistId))
-                                is ArtistItem -> luckyItem.radioEndpoint?.let {
-                                    playerConnection.playQueue(YouTubeQueue(it))
-                                }
-                                is PlaylistItem -> luckyItem.playEndpoint?.let {
-                                    playerConnection.playQueue(YouTubeQueue(it))
-                                }
-                            }
-                        }
-                    }
-                }
-            )
 
             Indicator(
                 isRefreshing = isRefreshing,

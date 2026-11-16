@@ -146,43 +146,23 @@ fun AboutScreen(
                 Spacer(Modifier.height(24.dp))
             }
 
-            // --- INSPIRATION SECTION ---
-            item {
-                SectionTitle("INSPIRATION")
-                Spacer(Modifier.height(8.dp))
-                AboutItemCard(
-                    iconUrl = "https://avatars.githubusercontent.com/u/107134739?v=4", 
-                    title = "Archivetune   -by koiverse",
-                    subtitle = "Base Framework",
-                    onClick = { uriHandler.openUri("https://github.com/koiverse/ArchiveTune") }
-                )
-                Spacer(Modifier.height(8.dp))
-                AboutItemCard(
-                    iconUrl = "https://avatars.githubusercontent.com/u/80542861?v=4",
-                    title = "MO AGAMY",
-                    subtitle = "Metrolist Dev",
-                    onClick = { uriHandler.openUri("https://github.com/mostafaalagamy") }
-                )
-                Spacer(Modifier.height(24.dp))
-            }
-
             // --- COMMUNITY SECTION ---
             item {
                 SectionTitle("COMMUNITY")
                 Spacer(Modifier.height(8.dp))
                 AboutItemCard(
-                    iconRes = R.drawable.instagram,
-                    title = "Instagram",
-                    subtitle = "ig acc",
-                    onClick = { uriHandler.openUri("https://www.instagram.com/y.n0tch/") }
-                )
-                Spacer(Modifier.height(24.dp))
-
-                AboutItemCard(
                     iconRes = R.drawable.ic_discord,
                     title = "Discord Server",
-                    subtitle = "still Working",
-                    onClick = { uriHandler.openUri("https://discord")}
+                    subtitle = "Join our community",
+                    onClick = { uriHandler.openUri("https://discord.com/invite/qybFSATs7Q") }
+                )
+                Spacer(Modifier.height(8.dp))
+
+                AboutItemCard(
+                    iconRes = R.drawable.instagram,
+                    title = "Instagram",
+                    subtitle = "@notchkai",
+                    onClick = { uriHandler.openUri("https://www.instagram.com/notchkai/") }
                 )
                 Spacer(Modifier.height(24.dp))
 
@@ -311,31 +291,15 @@ fun AboutItemCard(
         }
     }
 }
-fun launchUpiPayment(context: android.content.Context, upiId: String, payeeName: String) {
-    val note = "Support for wou"
-    val uriString = "upi://pay?pa=$upiId&pn=${android.net.Uri.encode(payeeName)}&tn=${android.net.Uri.encode(note)}&cu=INR"
-    val uri = android.net.Uri.parse(uriString)
-    val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, uri)
-
-    val chooser = android.content.Intent.createChooser(intent, "Pay with...")
-
-    try {
-        context.startActivity(chooser)
-    } catch (e: android.content.ActivityNotFoundException) {
-        android.widget.Toast.makeText(context, "No UPI app found on this device.", android.widget.Toast.LENGTH_SHORT).show()
-    }
-}
-
 @Composable
 fun SupportDeveloperCard(modifier: Modifier = Modifier) {
-    val context = LocalContext.current
-    val myUpiId = "mayadevi270@nyes"
-    val myName = "Notch"
+    val uriHandler = LocalUriHandler.current
 
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 4.dp, vertical = 4.dp),
+            .padding(horizontal = 4.dp, vertical = 4.dp)
+            .clickable { uriHandler.openUri("https://github.com/sponsors/kainotch") },
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.5f)
         ),
@@ -359,7 +323,7 @@ fun SupportDeveloperCard(modifier: Modifier = Modifier) {
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
-                    text = "If you enjoy wou, consider buying me a chai!",
+                    text = "If you enjoy wou, consider sponsoring on GitHub!",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -368,20 +332,25 @@ fun SupportDeveloperCard(modifier: Modifier = Modifier) {
             Spacer(modifier = Modifier.width(16.dp))
 
             Button(
-                onClick = { launchUpiPayment(context, myUpiId, myName) },
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
+                onClick = { uriHandler.openUri("https://github.com/sponsors/kainotch") },
+                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp),
                 shape = RoundedCornerShape(12.dp),
-                modifier = Modifier.height(36.dp)
+                modifier = Modifier.height(36.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFFDB61A2)
+                )
             ) {
                 Icon(
-                    painter = painterResource(id = android.R.drawable.ic_menu_send),
-                    contentDescription = "UPI",
-                    modifier = Modifier.size(16.dp)
+                    painter = painterResource(id = R.drawable.favorite),
+                    contentDescription = "Sponsor",
+                    modifier = Modifier.size(16.dp),
+                    tint = Color.White
                 )
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
-                    text = "UPI",
-                    style = MaterialTheme.typography.labelLarge
+                    text = "Sponsor",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = Color.White
                 )
             }
         }

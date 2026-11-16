@@ -9,6 +9,7 @@
 package com.notch.yt.playback.queues
 
 import androidx.media3.common.MediaItem
+import com.notch.yt.extensions.metadata
 import com.notch.yt.models.MediaMetadata
 
 class ListQueue(
@@ -17,7 +18,8 @@ class ListQueue(
     val startIndex: Int = 0,
     val position: Long = 0L,
 ) : Queue {
-    override val preloadItem: MediaMetadata? = null
+    override val preloadItem: MediaMetadata?
+        get() = items.getOrNull(startIndex)?.metadata
 
     override suspend fun getInitialStatus() = Queue.Status(title, items, startIndex, position)
 

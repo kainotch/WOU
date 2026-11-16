@@ -144,6 +144,7 @@ fun PlayerMenu(
     playerBottomSheetState: BottomSheetState,
     isQueueTrigger: Boolean? = false,
     onShowDetailsDialog: () -> Unit,
+    onShowJamSheet: () -> Unit = {},
     onDismiss: () -> Unit,
 ) {
     mediaMetadata ?: return
@@ -475,20 +476,20 @@ fun PlayerMenu(
                     NewAction(
                         icon = {
                             Icon(
-                                painter = painterResource(R.drawable.fire),
+                                painter = painterResource(R.drawable.waves),
                                 contentDescription = null,
                                 modifier = Modifier.size(28.dp),
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         },
-                        text = stringResource(R.string.music_together),
+                        text = stringResource(R.string.jam),
                         onClick = {
                             onDismiss()
-                            playerBottomSheetState.snapTo(playerBottomSheetState.collapsedBound)
-                            navController.navigate("settings/music_together")
+                            onShowJamSheet()
                         }
                     )
                 ),
+                columns = 4,
                 modifier = Modifier.padding(vertical = 4.dp)
             )
         }

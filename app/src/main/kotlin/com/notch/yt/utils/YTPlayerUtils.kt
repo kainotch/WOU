@@ -70,23 +70,13 @@ object YTPlayerUtils {
      * Clients used for fallback streams in case the streams of the main client do not work.
      */
     private val STREAM_FALLBACK_CLIENTS: Array<YouTubeClient> = arrayOf(
-        MOBILE,
-        ANDROID_MUSIC,
-        ANDROID_VR_NO_AUTH,
-        IOS,
-        IOS_MUSIC,
-        TVHTML5_SIMPLY_EMBEDDED_PLAYER,
-        ANDROID_VR_1_61_48,
-        ANDROID_VR_1_43_32,
-        ANDROID_CREATOR,
-        ANDROID_TESTSUITE,
-        ANDROID_UNPLUGGED,
-        IPADOS,
         VISIONOS,
-        TVHTML5,
-        WEB,
-        WEB_CREATOR,
-        WEB_REMIX
+        ANDROID_VR_1_61_48,
+        ANDROID_VR_NO_AUTH,
+        ANDROID_VR_1_43_32,
+        MOBILE,
+        TVHTML5_SIMPLY_EMBEDDED_PLAYER,
+        WEB_REMIX,
     )
     private data class CachedStreamUrl(
         val url: String,
@@ -193,7 +183,49 @@ object YTPlayerUtils {
         avoidCodecs: Set<String>,
     ): PlaybackData {
         Timber.tag(logTag).i("Fetching player response for videoId: $videoId, playlistId: $playlistId")
-        val signatureTimestamp = getSignatureTimestampOrNull(videoId)
+
+        val preferredYouTubeClient =
+            when (preferredStreamClient) {
+                PlayerStreamClient.VISIONOS -> VISIONOS
+                PlayerStreamClient.ANDROID_VR -> VISIONOS
+                PlayerStreamClient.WEB_REMIX -> VISIONOS
+                PlayerStreamClient.IOS -> VISIONOS
+                PlayerStreamClient.MOBILE -> MOBILE
+                PlayerStreamClient.TVHTML5 -> TVHTML5_SIMPLY_EMBEDDED_PLAYER
+                PlayerStreamClient.ANDROID_MUSIC -> VISIONOS
+            }
+
+        // Fast path: if we already have a valid cached stream URL for this video, skip the YouTube.player() API call entirely
+        val now = System.currentTimeMillis()
+        val cachedEntry = streamUrlCache.entries
+            .firstOrNull { it.key.startsWith("$videoId:") && it.value.expiresAtMs > now }
+        if (cachedEntry != null) {
+            Timber.tag(logTag).i("Stream URL cache hit for $videoId, skipping YouTube.player() call")
+            val itagStr = cachedEntry.key.substringAfter("$videoId:")
+            val itag = itagStr.toIntOrNull()
+            if (itag != null) {
+                val expiresInSeconds = ((cachedEntry.value.expiresAtMs - now) / 1000L).toInt().coerceAtLeast(1)
+                return PlaybackData(
+                    audioConfig = null,
+                    videoDetails = null,
+                    playbackTracking = null,
+                    format = PlayerResponse.StreamingData.Format(
+                        itag = itag, url = cachedEntry.value.url, mimeType = "", bitrate = 0,
+                        width = null, height = null, contentLength = null, quality = "",
+                        fps = null, qualityLabel = null, averageBitrate = null,
+                        audioQuality = null, approxDurationMs = null, audioSampleRate = null,
+                        audioChannels = null, loudnessDb = null, lastModified = null,
+                        signatureCipher = null, cipher = null,
+                    ),
+                    streamUrl = cachedEntry.value.url,
+                    streamExpiresInSeconds = expiresInSeconds,
+                )
+            }
+        }
+
+        val metadataClient = preferredYouTubeClient
+        val signatureTimestamp =
+            if (metadataClient.useSignatureTimestamp) getSignatureTimestampOrNull(videoId) else null
         Timber.tag(logTag).v("Signature timestamp: $signatureTimestamp")
 
         val isLoggedIn = YouTube.cookie != null
@@ -213,19 +245,6 @@ object YTPlayerUtils {
                         STREAM_FALLBACK_CLIENTS.toList()
                     }
                     ).distinct()
-
-        val preferredYouTubeClient =
-            when (preferredStreamClient) {
-                PlayerStreamClient.ANDROID_VR -> IOS // Aliased to IOS to bypass bot detection currently blocking VR clients
-                PlayerStreamClient.WEB_REMIX -> WEB_REMIX
-                PlayerStreamClient.IOS -> IOS
-                PlayerStreamClient.MOBILE -> ANDROID_MUSIC
-                PlayerStreamClient.TVHTML5 -> TVHTML5_SIMPLY_EMBEDDED_PLAYER
-                PlayerStreamClient.ANDROID_MUSIC -> ANDROID_MUSIC
-            }
-
-        val metadataClient =
-            preferredYouTubeClient.takeIf { preferredStreamClient == PlayerStreamClient.ANDROID_VR } ?: MAIN_CLIENT
 
         Timber.tag(logTag).i("Fetching metadata response using client: ${metadataClient.clientName}")
         val metadataPlayerResponse = runCatching {
@@ -333,17 +352,8 @@ object YTPlayerUtils {
             Timber.tag(logTag).i("Format found: ${format.mimeType}, bitrate: ${format.bitrate}")
             Timber.tag(logTag).v("Stream expires in: $streamExpiresInSeconds seconds")
 
-            val valid = validateStatus(streamUrl, client.userAgent)
-            if (valid) {
-                Timber.tag(logTag).i("Stream validated successfully with client: ${client.clientName}")
-                break
-            }
-
-            Timber.tag(logTag).w("Stream validation failed with client: ${client.clientName}, trying next fallback")
-            format = null
-            streamUrl = null
-            streamExpiresInSeconds = null
-            streamPlayerResponse = null
+            Timber.tag(logTag).i("Stream obtained successfully with client: ${client.clientName}")
+            break
         }
 
         if (streamPlayerResponse == null) {
@@ -469,16 +479,16 @@ object YTPlayerUtils {
             }
 
         val preferHigher =
-            compareByDescending<PlayerResponse.StreamingData.Format> { it.url != null }
-                .thenByDescending { it.bitrate }
+            compareByDescending<PlayerResponse.StreamingData.Format> { it.bitrate }
                 .thenByDescending { codecRank(extractCodec(it.mimeType)) }
                 .thenByDescending { it.audioSampleRate ?: 0 }
+                .thenByDescending { it.url != null }
 
         val preferLowerAboveTarget =
-            compareByDescending<PlayerResponse.StreamingData.Format> { it.url != null }
-                .thenBy { it.bitrate }
+            compareBy<PlayerResponse.StreamingData.Format> { it.bitrate }
                 .thenByDescending { codecRank(extractCodec(it.mimeType)) }
                 .thenByDescending { it.audioSampleRate ?: 0 }
+                .thenByDescending { it.url != null }
 
         val candidates =
             if (targetBitrateBps == null) {
@@ -576,12 +586,21 @@ object YTPlayerUtils {
     /**
      * Wrapper around the [NewPipeUtils.getSignatureTimestamp] function which reports exceptions
      */
+    @Volatile private var cachedSignatureTimestamp: Pair<Int, Long>? = null
+
     private fun getSignatureTimestampOrNull(
         videoId: String
     ): Int? {
+        val cached = cachedSignatureTimestamp
+        if (cached != null && System.currentTimeMillis() - cached.second < 24 * 60 * 60 * 1000L) {
+            return cached.first
+        }
         Timber.tag(logTag).i("Getting signature timestamp for videoId: $videoId")
         return NewPipeUtils.getSignatureTimestamp(videoId)
-            .onSuccess { Timber.tag(logTag).i("Signature timestamp obtained: $it") }
+            .onSuccess {
+                cachedSignatureTimestamp = it to System.currentTimeMillis()
+                Timber.tag(logTag).i("Signature timestamp obtained: $it")
+            }
             .onFailure {
                 Timber.tag(logTag).e(it, "Failed to get signature timestamp")
                 reportException(it)

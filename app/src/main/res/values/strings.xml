@@ -38,7 +38,7 @@
     <string name="most_played_albums">Most played albums</string>
     <!-- Search -->
     <string name="search">Search</string>
-    <string name="search_yt_music">Search YouTube Music…</string>
+    <string name="search_yt_music">What do you want to listen?</string>
     <string name="search_library">Search library…</string>
     <string name="filter_library">Library</string>
     <string name="filter_liked">Liked</string>
@@ -723,6 +723,27 @@ wou will only extract your token, and everything else is stored locally.</string
     <string name="disabled">Disabled</string>
     <string name="invalid_link">Invalid link</string>
     <string name="invalid_code">Invalid code</string>
+
+    <!-- wou Jam -->
+    <string name="jam">Jam</string>
+    <string name="wou_jam">wou Jam</string>
+    <string name="start_jam">Start a Jam</string>
+    <string name="join_jam">Join a Jam</string>
+    <string name="leave_jam">Leave Jam</string>
+    <string name="jam_collaborative">Collaborative</string>
+    <string name="jam_collaborative_desc">Guests can pause, seek, and add songs</string>
+    <string name="jam_host_only">Host Only</string>
+    <string name="jam_room_code">Room Code</string>
+    <string name="jam_copy_code">Copy Code</string>
+    <string name="jam_share_invite">Share Invite</string>
+    <string name="jam_code_copied">Room code copied</string>
+    <string name="jam_live">LIVE</string>
+    <string name="jam_listening_with">Listening with %1$s</string>
+    <string name="jam_you_are_host">You\'re the Jam host</string>
+    <string name="jam_enter_code">Enter 6-character code</string>
+    <string name="jam_listeners">Listeners</string>
+    <string name="jam_now_syncing">Now Syncing</string>
+    <string name="jam_subtitle">Listen in perfect sync with friends</string>
     <string name="not_allowed">Not allowed</string>
     <string name="network_unavailable">Network unavailable</string>
     <string name="together_online_not_configured">Online sessions aren\'t configured</string>

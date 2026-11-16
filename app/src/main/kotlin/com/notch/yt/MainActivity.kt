@@ -114,6 +114,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.fastAny
 import androidx.compose.ui.util.fastForEach
 import androidx.compose.ui.window.Dialog
@@ -627,7 +628,7 @@ class MainActivity : ComponentActivity() {
 
                     val navigationItems = remember { Screens.MainScreens }
                     val (slimNav) = rememberPreference(SlimNavBarKey, defaultValue = false)
-                    val (useNewMiniPlayerDesign) = rememberPreference(UseNewMiniPlayerDesignKey, defaultValue = true)
+                    val (useNewMiniPlayerDesign) = rememberPreference(UseNewMiniPlayerDesignKey, defaultValue = false)
                     val defaultOpenTab by rememberEnumPreference(DefaultOpenTabKey, NavigationTab.HOME)
                     val pauseSearchHistory by rememberPreference(PauseSearchHistoryKey, defaultValue = false)
                     val tabOpenedFromShortcut =
@@ -696,7 +697,8 @@ class MainActivity : ComponentActivity() {
                     val shouldShowNavigationBar =
                         remember(navBackStackEntry, active) {
                             navBackStackEntry?.destination?.route == null ||
-                                    navigationItems.fastAny { it.route == navBackStackEntry?.destination?.route } &&
+                                    (navigationItems.fastAny { it.route == navBackStackEntry?.destination?.route } ||
+                                     navBackStackEntry?.destination?.route?.startsWith("search/") == true) &&
                                     !active
                         }
 
@@ -708,7 +710,7 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
-                    val floatingBarsBottomPadding = 8.dp
+                    val floatingBarsBottomPadding = 0.dp
                     val navVisibleHeight = if (slimNav) SlimNavBarHeight else NavigationBarHeight
 
                     val bottomNavigationBarHeight by animateDpAsState(
@@ -716,6 +718,10 @@ class MainActivity : ComponentActivity() {
                         animationSpec = NavigationBarAnimationSpec,
                         label = "",
                     )
+
+                    val hasPersistentQueue = remember {
+                        filesDir.resolve(MusicService.PERSISTENT_QUEUE_FILE).exists()
+                    }
 
                     val playerBottomSheetState =
                         rememberBottomSheetState(
@@ -727,6 +733,7 @@ class MainActivity : ComponentActivity() {
                                         (if (useNewMiniPlayerDesign) MiniPlayerBottomSpacing else 0.dp) +
                                         MiniPlayerHeight,
                             expandedBound = maxHeight,
+                            initialAnchor = if (hasPersistentQueue) COLLAPSED_ANCHOR else DISMISSED_ANCHOR,
                         )
 
                     var yearInMusicSavedPlayerAnchor by rememberSaveable { mutableIntStateOf(-1) }
@@ -876,36 +883,39 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
-                    LaunchedEffect(playerConnection) {
-                        val player = playerConnection?.player ?: return@LaunchedEffect
+                    LaunchedEffect(playerConnection, isYearInMusicScreen) {
                         val connection = playerConnection ?: return@LaunchedEffect
                         connection.queueRestoreCompleted.first { it }
-                        if (player.currentMediaItem == null) {
-                            if (!playerBottomSheetState.isDismissed) {
-                                playerBottomSheetState.dismiss()
-                            }
-                        } else {
-                            if (!isYearInMusicScreen && playerBottomSheetState.isDismissed) {
-                                playerBottomSheetState.collapseSoft()
+                        connection.mediaMetadata.collect { metadata ->
+                            if (metadata != null) {
+                                if (!isYearInMusicScreen && playerBottomSheetState.isDismissed) {
+                                    playerBottomSheetState.collapseSoft()
+                                }
+                            } else {
+                                if (connection.player.mediaItemCount == 0 && !playerBottomSheetState.isDismissed) {
+                                    playerBottomSheetState.dismiss()
+                                }
                             }
                         }
                     }
 
-                    DisposableEffect(playerConnection, playerBottomSheetState) {
-                        val player =
-                            playerConnection?.player ?: return@DisposableEffect onDispose { }
+                    DisposableEffect(playerConnection, playerBottomSheetState, isYearInMusicScreen) {
+                        val connection =
+                            playerConnection ?: return@DisposableEffect onDispose { }
+                        val player = connection.player
                         val listener =
                             object : Player.Listener {
                                 override fun onMediaItemTransition(
                                     mediaItem: MediaItem?,
                                     reason: Int,
                                 ) {
-                                    if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_PLAYLIST_CHANGED &&
-                                        mediaItem != null &&
+                                    if (mediaItem != null &&
                                         playerBottomSheetState.isDismissed &&
                                         !isYearInMusicScreen
                                     ) {
                                         playerBottomSheetState.collapseSoft()
+                                    } else if (mediaItem == null && player.mediaItemCount == 0 && connection.queueRestoreCompleted.value && !playerBottomSheetState.isDismissed) {
+                                        playerBottomSheetState.dismiss()
                                     }
                                 }
                             }
@@ -1156,13 +1166,6 @@ class MainActivity : ComponentActivity() {
                                                 },
 
                                                 actions = {
-                                                    IconButton(onClick = { onActiveChange(true) }) {
-                                                        Icon(
-                                                            painter = painterResource(R.drawable.search),
-                                                            contentDescription = stringResource(R.string.search)
-                                                        )
-                                                    }
-
                                                     IconButton(onClick = { navController.navigate("settings") }) {
                                                         Icon(
                                                             painter = painterResource(R.drawable.settings),
@@ -1201,6 +1204,11 @@ class MainActivity : ComponentActivity() {
                                                             SearchSource.ONLINE -> R.string.search_yt_music
                                                         }
                                                     ),
+                                                    style = MaterialTheme.typography.bodyMedium.copy(
+                                                        fontSize = 14.sp
+                                                    ),
+                                                    maxLines = 1,
+                                                    overflow = TextOverflow.Ellipsis
                                                 )
                                             },
                                             leadingIcon = {
@@ -1365,6 +1373,7 @@ class MainActivity : ComponentActivity() {
                                             modifier =
                                                 Modifier
                                                     .align(Alignment.BottomCenter)
+                                                    .fillMaxWidth()
                                                     .height(navSlideDistance)
                                                     .offset {
                                                         if (bottomNavigationBarHeight == 0.dp) {
@@ -1389,33 +1398,27 @@ class MainActivity : ComponentActivity() {
                                                         }
                                                     },
                                         ) {
-                                            if (pureBlack) Color.Black
-                                            else MaterialTheme.colorScheme.surfaceContainer
-
                                             FluidSlidingNavigationBar(
                                                 modifier = Modifier
                                                     .align(Alignment.BottomCenter)
-                                                    .padding(
-                                                        start = 12.dp,
-                                                        end = 12.dp,
-                                                        bottom = bottomInset + floatingBarsBottomPadding,
-                                                    )
-                                                    .border(
-                                                        width = 1.dp,
-                                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f),
-                                                        shape = RoundedCornerShape(24.dp)
-                                                    )
-                                                    .clip(RoundedCornerShape(24.dp))
                                                     .fillMaxWidth()
-                                                    .height(navVisibleHeight),
+                                                    .height(navSlideDistance),
                                                 items = navigationItems,
-                                                currentRoute = navBackStackEntry?.destination?.route ?: "",
+                                                currentRoute = if (active || navBackStackEntry?.destination?.route?.startsWith("search/") == true) Screens.Search.route else (navBackStackEntry?.destination?.route ?: ""),
                                                 pureBlack = pureBlack,
+                                                bottomInset = bottomInset,
                                                 onTabSelected = { screen ->
                                                     val isSelected = navBackStackEntry?.destination?.hierarchy?.any { it.route == screen.route } == true
 
                                                     if (screen.route == Screens.Search.route) {
                                                         onActiveChange(true)
+                                                        coroutineScope.launch {
+                                                            delay(100)
+                                                            try {
+                                                                searchBarFocusRequester.requestFocus()
+                                                            } catch (_: Exception) {
+                                                            }
+                                                        }
                                                     } else if (isSelected) {
                                                         navController.currentBackStackEntry?.savedStateHandle?.set("scrollToTop", true)
                                                         coroutineScope.launch {

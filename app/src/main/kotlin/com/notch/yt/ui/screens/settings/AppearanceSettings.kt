@@ -142,7 +142,7 @@ fun AppearanceSettings(
     )
     val (useNewMiniPlayerDesign, onUseNewMiniPlayerDesignChange) = rememberPreference(
         UseNewMiniPlayerDesignKey,
-        defaultValue = true
+        defaultValue = false
     )
     val (useNewLibraryDesign, onUseNewLibraryDesignChange) = rememberPreference(
         key = com.notch.yt.constants.UseNewLibraryDesignKey,

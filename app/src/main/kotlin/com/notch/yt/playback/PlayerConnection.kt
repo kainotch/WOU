@@ -34,6 +34,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class PlayerConnection(
@@ -105,10 +106,40 @@ class PlayerConnection(
                 mediaMetadata.value = mediaItem.metadata
             }
         }
+
+        scope.launch {
+            service.currentMediaMetadata.collect { meta ->
+                if (meta != null) {
+                    mediaMetadata.value = meta
+                    updateCanSkipPreviousAndNext()
+                } else if (player.mediaItemCount == 0 && service.queueRestoreCompleted.value) {
+                    mediaMetadata.value = null
+                }
+            }
+        }
+
+        scope.launch {
+            service.queueRestoreCompleted.collect { completed ->
+                if (completed) {
+                    if (mediaMetadata.value == null) {
+                        mediaMetadata.value = player.currentMetadata ?: service.currentMediaMetadata.value
+                    }
+                    queueTitle.value = service.queueTitle
+                    queueWindows.value = player.getQueueWindows()
+                    currentMediaItemIndex.value = player.currentMediaItemIndex
+                    currentWindowIndex.value = player.getCurrentQueueIndex()
+                    updateCanSkipPreviousAndNext()
+                }
+            }
+        }
     }
 
     fun playQueue(queue: Queue) {
         service.playQueue(queue)
+    }
+
+    fun prefetchStreamUrl(mediaId: String) {
+        service.prefetchStreamUrl(mediaId)
     }
 
     fun startRadioSeamlessly() {
