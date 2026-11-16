@@ -57,7 +57,7 @@ object LrcLib {
     ) = client
         .get("/api/search") {
             parameter("track_name", title)
-            if (artist.isNotBlank()) parameter("artist_name", artist)
+            parameter("artist_name", artist)
             if (album != null) parameter("album_name", album)
         }.body<List<Track>>()
         .filter { it.syncedLyrics != null }
@@ -68,17 +68,14 @@ object LrcLib {
         duration: Int,
         album: String? = null,
     ) = runCatching {
-        var tracks = queryLyrics(artist, title, album)
-        if (tracks.isEmpty() && artist.isNotBlank()) {
-            tracks = queryLyrics("", title, album)
-        }
+        val tracks = queryLyrics(artist, title, album)
 
         val res = when {
             duration == -1 -> {
                 tracks.bestMatchingFor(duration, title, artist)?.syncedLyrics?.let { LrcLib.Lyrics(it) }
             }
             else -> {
-                tracks.bestMatchingFor(duration, title, artist)?.syncedLyrics?.let { LrcLib.Lyrics(it) }
+                tracks.bestMatchingFor(duration)?.syncedLyrics?.let { LrcLib.Lyrics(it) }
             }
         }
 

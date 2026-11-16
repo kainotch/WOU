@@ -648,22 +648,26 @@ class MusicService :
             }
         }
 
-        currentMediaMetadata.distinctUntilChangedBy { it?.id }
-            .collectLatest(ioScope) { mediaMetadata ->
-                if (mediaMetadata != null && database.lyrics(mediaMetadata.id).first() == null) {
-                    val lyrics = lyricsHelper.getLyrics(mediaMetadata)
-                    if (lyrics != LyricsEntity.LYRICS_NOT_FOUND) {
-                        database.query {
-                            upsert(
-                                LyricsEntity(
-                                    id = mediaMetadata.id,
-                                    lyrics = lyrics,
-                                ),
-                            )
-                        }
-                    }
+        combine(
+            currentMediaMetadata.distinctUntilChangedBy { it?.id },
+            dataStore.data.map { it[ShowLyricsKey] ?: false }.distinctUntilChanged(),
+        ) { mediaMetadata, showLyrics ->
+            mediaMetadata to showLyrics
+        }.collectLatest(ioScope) { (mediaMetadata, showLyrics) ->
+            if (showLyrics && mediaMetadata != null && database.lyrics(mediaMetadata.id)
+                    .first() == null
+            ) {
+                val lyrics = lyricsHelper.getLyrics(mediaMetadata)
+                database.query {
+                    upsert(
+                        LyricsEntity(
+                            id = mediaMetadata.id,
+                            lyrics = lyrics,
+                        ),
+                    )
                 }
             }
+        }
 
         dataStore.data
             .map { it[SkipSilenceKey] ?: false }

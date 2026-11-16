@@ -127,7 +127,6 @@ import com.notch.yt.constants.DisableBlurKey
 import dagger.hilt.android.EntryPointAccessors
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -161,12 +160,15 @@ fun LyricsScreen(
     val currentLyrics by playerConnection.currentLyrics.collectAsState(initial = null)
     val (useLyricsV2) = rememberPreference(UseLyricsV2Key, defaultValue = false)
 
-    // Auto-fetch lyrics when no lyrics found or previous attempt was not found
-    LaunchedEffect(mediaMetadata.id) {
-        withContext(Dispatchers.IO) {
-            try {
-                val dbLyrics = database.lyrics(mediaMetadata.id).first()
-                if (dbLyrics == null || dbLyrics.lyrics == LyricsEntity.LYRICS_NOT_FOUND) {
+    // Auto-fetch lyrics when no lyrics found (same logic as refetch)
+    LaunchedEffect(mediaMetadata.id, currentLyrics) {
+        if (currentLyrics == null) {
+            // Small delay to ensure database state is stable
+            delay(500)
+            
+            coroutineScope.launch(Dispatchers.IO) {
+                try {
+                    // Get LyricsHelper from Hilt
                     val entryPoint = EntryPointAccessors.fromApplication(
                         context.applicationContext,
                         com.notch.yt.di.LyricsHelperEntryPoint::class.java
@@ -176,15 +178,13 @@ fun LyricsScreen(
                     // Fetch lyrics automatically
                     val lyrics = lyricsHelper.getLyrics(mediaMetadata)
                     
-                    if (lyrics != LyricsEntity.LYRICS_NOT_FOUND || dbLyrics == null) {
-                        // Save to database
-                        database.query {
-                            upsert(LyricsEntity(mediaMetadata.id, lyrics))
-                        }
+                    // Save to database
+                    database.query {
+                        upsert(LyricsEntity(mediaMetadata.id, lyrics))
                     }
+                } catch (e: Exception) {
+                    // Handle error silently - user can manually refetch if needed
                 }
-            } catch (e: Exception) {
-                // Handle error silently - user can manually refetch if needed
             }
         }
     }

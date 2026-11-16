@@ -32,16 +32,8 @@ internal fun List<Track>.bestMatchingFor(
         return firstOrNull { it.syncedLyrics != null } ?: firstOrNull()
     }
 
-    val durationMatch = minByOrNull { abs(it.duration.toInt() - duration) }
-        ?.takeIf { abs(it.duration.toInt() - duration) <= 15 }
-    if (durationMatch != null) return durationMatch
-
-    if (trackName != null && artistName != null) {
-        val titleMatch = findBestMatch(trackName, artistName)
-        if (titleMatch != null) return titleMatch
-    }
-
-    return firstOrNull { it.syncedLyrics != null } ?: firstOrNull()
+    return minByOrNull { abs(it.duration.toInt() - duration) }
+        ?.takeIf { abs(it.duration.toInt() - duration) <= 2 }
 }
 
 private fun List<Track>.findBestMatch(trackName: String, artistName: String): Track? {
