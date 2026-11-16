@@ -24,6 +24,7 @@ import android.os.IBinder
 import android.view.View
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
@@ -882,6 +883,14 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
+                    BackHandler(enabled = navBackStackEntry?.destination?.route?.startsWith("search/") == true) {
+                        navController.navigateUp()
+                        if (navController.currentBackStackEntry?.destination?.route?.startsWith("search/") != true) {
+                            onActiveChange(true)
+                            onQueryChange(TextFieldValue(""))
+                        }
+                    }
+
                     LaunchedEffect(playerConnection, isYearInMusicScreen) {
                         val connection = playerConnection ?: return@LaunchedEffect
                         connection.queueRestoreCompleted.first { it }
@@ -1215,6 +1224,13 @@ class MainActivity : ComponentActivity() {
                                                     onClick = {
                                                         when {
                                                             active -> onActiveChange(false)
+                                                            navBackStackEntry?.destination?.route?.startsWith("search/") == true -> {
+                                                                navController.navigateUp()
+                                                                if (navController.currentBackStackEntry?.destination?.route?.startsWith("search/") != true) {
+                                                                    onActiveChange(true)
+                                                                    onQueryChange(TextFieldValue(""))
+                                                                }
+                                                            }
                                                             !navigationItems.fastAny { it.route == navBackStackEntry?.destination?.route } -> {
                                                                 navController.navigateUp()
                                                             }
@@ -1410,7 +1426,11 @@ class MainActivity : ComponentActivity() {
                                                     val isSelected = navBackStackEntry?.destination?.hierarchy?.any { it.route == screen.route } == true
 
                                                     if (screen.route == Screens.Search.route) {
-                                                        if (!active) {
+                                                        if (navBackStackEntry?.destination?.route?.startsWith("search/") == true) {
+                                                            navController.navigateUp()
+                                                            onActiveChange(true)
+                                                            onQueryChange(TextFieldValue(""))
+                                                        } else if (!active) {
                                                             onActiveChange(true)
                                                         }
                                                     } else {
