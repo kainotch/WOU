@@ -41,6 +41,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -52,10 +54,15 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -77,13 +84,20 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import kotlinx.coroutines.flow.MutableStateFlow
 import com.notch.yt.LocalPlayerAwareWindowInsets
@@ -101,7 +115,11 @@ import com.notch.yt.together.TogetherRole
 import com.notch.yt.together.TogetherRoomSettings
 import com.notch.yt.together.TogetherSessionState
 import com.notch.yt.ui.component.IconButton as AtIconButton
+import com.notch.yt.ui.component.LocalBottomSheetPageState
 import com.notch.yt.ui.component.TextFieldDialog
+import com.notch.yt.ui.jam.JamManager
+import com.notch.yt.ui.jam.JamUiState
+import com.notch.yt.ui.jam.WouJamSheet
 import com.notch.yt.ui.utils.backToMain
 import com.notch.yt.utils.rememberPreference
 
@@ -113,6 +131,15 @@ fun MusicTogetherScreen(
 ) {
     val context = LocalContext.current
     val playerConnection = LocalPlayerConnection.current
+    val bottomSheetPageState = LocalBottomSheetPageState.current
+
+    LaunchedEffect(playerConnection) {
+        if (playerConnection != null) {
+            JamManager.bindPlayerConnection(playerConnection)
+        }
+    }
+
+    val jamState by JamManager.uiState.collectAsState()
 
     val (welcomeShown, setWelcomeShown) = rememberPreference(TogetherWelcomeShownKey, false)
     var welcomeDismissedThisSession by rememberSaveable { mutableStateOf(false) }
@@ -247,9 +274,15 @@ fun MusicTogetherScreen(
     }
 
     var joinInput by rememberSaveable { mutableStateOf(lastJoinLink) }
+    val isJamCodeInput = remember(joinInput) {
+        val trimmed = joinInput.trim()
+        trimmed.length == 6 && trimmed.all { it.isLetterOrDigit() }
+    }
     val canJoin =
-        remember(joinInput, joinModeOnline) {
-            if (joinModeOnline) joinInput.trim().isNotBlank() else TogetherLink.decode(joinInput) != null
+        remember(joinInput, joinModeOnline, isJamCodeInput) {
+            if (isJamCodeInput) true
+            else if (joinModeOnline) joinInput.trim().isNotBlank()
+            else TogetherLink.decode(joinInput) != null
         }
 
     if (showJoinDialog) {
@@ -264,15 +297,24 @@ fun MusicTogetherScreen(
             placeholder = { Text(text = placeholder) },
             singleLine = false,
             maxLines = 8,
-            isInputValid = { if (joinModeOnline) it.trim().isNotBlank() else TogetherLink.decode(it) != null },
+            isInputValid = { raw ->
+                val trimmed = raw.trim()
+                (trimmed.length == 6 && trimmed.all { it.isLetterOrDigit() }) ||
+                    (if (joinModeOnline) trimmed.isNotBlank() else TogetherLink.decode(trimmed) != null)
+            },
             onDone = { raw ->
                 val trimmed = raw.trim()
                 joinInput = trimmed
-                setLastJoinLink(trimmed)
-                if (joinModeOnline) {
-                    playerConnection?.service?.joinTogetherOnline(trimmed, displayName)
+                if (trimmed.length == 6 && trimmed.all { it.isLetterOrDigit() }) {
+                    JamManager.joinJam(trimmed.uppercase(), displayName)
+                    bottomSheetPageState.show { WouJamSheet(onDismiss = bottomSheetPageState::dismiss) }
                 } else {
-                    playerConnection?.service?.joinTogether(trimmed, displayName)
+                    setLastJoinLink(trimmed)
+                    if (joinModeOnline) {
+                        playerConnection?.service?.joinTogetherOnline(trimmed, displayName)
+                    } else {
+                        playerConnection?.service?.joinTogether(trimmed, displayName)
+                    }
                 }
             },
             onDismiss = { showJoinDialog = false },
@@ -362,6 +404,17 @@ fun MusicTogetherScreen(
             Modifier.windowInsetsPadding(
                 LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Top),
             ),
+        )
+
+        MusicTogetherJamCard(
+            displayName = displayName,
+            jamState = jamState,
+            onOpenJamSheet = {
+                bottomSheetPageState.show { WouJamSheet(onDismiss = bottomSheetPageState::dismiss) }
+            },
+            modifier = Modifier
+                .padding(horizontal = 16.dp)
+                .padding(top = 4.dp, bottom = 12.dp),
         )
 
         StatusCard(
@@ -460,11 +513,16 @@ fun MusicTogetherScreen(
             onShowJoinDialog = { showJoinDialog = true },
             onJoin = {
                 val trimmed = joinInput.trim()
-                setLastJoinLink(trimmed)
-                if (joinModeOnline) {
-                    playerConnection?.service?.joinTogetherOnline(trimmed, displayName)
+                if (trimmed.length == 6 && trimmed.all { it.isLetterOrDigit() }) {
+                    JamManager.joinJam(trimmed.uppercase(), displayName)
+                    bottomSheetPageState.show { WouJamSheet(onDismiss = bottomSheetPageState::dismiss) }
                 } else {
-                    playerConnection?.service?.joinTogether(trimmed, displayName)
+                    setLastJoinLink(trimmed)
+                    if (joinModeOnline) {
+                        playerConnection?.service?.joinTogetherOnline(trimmed, displayName)
+                    } else {
+                        playerConnection?.service?.joinTogether(trimmed, displayName)
+                    }
                 }
             },
             modifier = Modifier
@@ -1477,6 +1535,295 @@ private fun ParticipantsCard(
                 maxLines = 3,
                 overflow = TextOverflow.Ellipsis,
             )
+        }
+    }
+}
+
+@Composable
+private fun MusicTogetherJamCard(
+    displayName: String,
+    jamState: JamUiState,
+    onOpenJamSheet: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val context = LocalContext.current
+    val clipboardManager = LocalClipboardManager.current
+    val focusManager = LocalFocusManager.current
+    var roomCodeInput by rememberSaveable { mutableStateOf("") }
+    val isConnected = jamState.isConnected && jamState.roomCode != null
+
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .animateContentSize(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+    ) {
+        Column(
+            modifier = Modifier.padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(
+                            Brush.linearGradient(
+                                colors = listOf(
+                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.22f),
+                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
+                                ),
+                            ),
+                        ),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.waves),
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(22.dp),
+                    )
+                }
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Text(
+                            text = stringResource(R.string.wou_jam),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                        if (isConnected) {
+                            Surface(
+                                shape = RoundedCornerShape(6.dp),
+                                color = MaterialTheme.colorScheme.primary,
+                            ) {
+                                Text(
+                                    text = "ACTIVE",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onPrimary,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                )
+                            }
+                        }
+                    }
+                    Text(
+                        text = if (isConnected) {
+                            if (jamState.isHost) stringResource(R.string.jam_you_are_host)
+                            else stringResource(R.string.jam_listening_with, jamState.hostName.ifBlank { "Host" })
+                        } else {
+                            stringResource(R.string.jam_subtitle)
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+
+            if (isConnected) {
+                Surface(
+                    shape = RoundedCornerShape(16.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(14.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Text(
+                            text = stringResource(R.string.jam_room_code),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.outline,
+                        )
+                        Text(
+                            text = jamState.roomCode.orEmpty(),
+                            style = MaterialTheme.typography.headlineMedium,
+                            fontWeight = FontWeight.ExtraBold,
+                            letterSpacing = 6.sp,
+                            fontFamily = FontFamily.Monospace,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            OutlinedButton(
+                                onClick = {
+                                    clipboardManager.setText(AnnotatedString(jamState.roomCode.orEmpty()))
+                                    Toast.makeText(context, R.string.jam_code_copied, Toast.LENGTH_SHORT).show()
+                                },
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(12.dp),
+                            ) {
+                                Icon(
+                                    painter = painterResource(R.drawable.copy),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp),
+                                )
+                                Spacer(Modifier.width(6.dp))
+                                Text(stringResource(R.string.jam_copy_code), style = MaterialTheme.typography.labelMedium)
+                            }
+                            FilledTonalButton(
+                                onClick = {
+                                    val code = jamState.roomCode.orEmpty()
+                                    val sendIntent = Intent().apply {
+                                        action = Intent.ACTION_SEND
+                                        putExtra(Intent.EXTRA_TEXT, "Join my wou Jam!\nRoom Code: $code")
+                                        type = "text/plain"
+                                    }
+                                    context.startActivity(Intent.createChooser(sendIntent, "Share Jam Invite"))
+                                },
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(12.dp),
+                            ) {
+                                Icon(
+                                    painter = painterResource(R.drawable.share),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp),
+                                )
+                                Spacer(Modifier.width(6.dp))
+                                Text(stringResource(R.string.jam_share_invite), style = MaterialTheme.typography.labelMedium)
+                            }
+                        }
+                    }
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Button(
+                        onClick = onOpenJamSheet,
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.waves),
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp),
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        Text("Open Jam", fontWeight = FontWeight.SemiBold)
+                    }
+                    OutlinedButton(
+                        onClick = { JamManager.leaveJam() },
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                    ) {
+                        Text(stringResource(R.string.leave_jam), fontWeight = FontWeight.SemiBold)
+                    }
+                }
+            } else {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    OutlinedTextField(
+                        value = roomCodeInput,
+                        onValueChange = {
+                            if (it.length <= 6) {
+                                roomCodeInput = it.uppercase()
+                            }
+                        },
+                        placeholder = { Text(stringResource(R.string.jam_enter_code), style = MaterialTheme.typography.bodySmall) },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(
+                            capitalization = KeyboardCapitalization.Characters,
+                            imeAction = ImeAction.Done,
+                        ),
+                        keyboardActions = KeyboardActions(
+                            onDone = {
+                                focusManager.clearFocus()
+                                val code = roomCodeInput.trim().uppercase()
+                                if (code.isNotBlank()) {
+                                    JamManager.joinJam(code, displayName)
+                                    onOpenJamSheet()
+                                }
+                            },
+                        ),
+                        trailingIcon = {
+                            IconButton(
+                                onClick = {
+                                    val text = clipboardManager.getText()?.text
+                                    if (!text.isNullOrBlank()) {
+                                        val clean = text.trim().substringAfterLast("/").substringAfterLast("=")
+                                        roomCodeInput = clean.take(6).uppercase()
+                                    }
+                                },
+                            ) {
+                                Icon(
+                                    painter = painterResource(R.drawable.copy),
+                                    contentDescription = "Paste",
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(18.dp),
+                                )
+                            }
+                        },
+                        shape = RoundedCornerShape(16.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = MaterialTheme.colorScheme.primary,
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                        ),
+                        modifier = Modifier.weight(1f),
+                    )
+
+                    FilledTonalButton(
+                        enabled = roomCodeInput.trim().isNotBlank() && !jamState.isConnecting,
+                        onClick = {
+                            focusManager.clearFocus()
+                            val code = roomCodeInput.trim().uppercase()
+                            if (code.isNotBlank()) {
+                                JamManager.joinJam(code, displayName)
+                                onOpenJamSheet()
+                            }
+                        },
+                        shape = RoundedCornerShape(16.dp),
+                        modifier = Modifier.height(54.dp),
+                    ) {
+                        Text(stringResource(R.string.join_jam), fontWeight = FontWeight.SemiBold)
+                    }
+                }
+
+                Button(
+                    enabled = !jamState.isConnecting,
+                    onClick = {
+                        JamManager.createJam(displayName)
+                        onOpenJamSheet()
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                ) {
+                    if (jamState.isConnecting) {
+                        wouLoader(size = 18.dp)
+                        Spacer(Modifier.width(8.dp))
+                        Text(stringResource(R.string.connecting), fontWeight = FontWeight.SemiBold)
+                    } else {
+                        Icon(
+                            painter = painterResource(R.drawable.waves),
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp),
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(stringResource(R.string.start_jam), fontWeight = FontWeight.SemiBold)
+                    }
+                }
+            }
         }
     }
 }
