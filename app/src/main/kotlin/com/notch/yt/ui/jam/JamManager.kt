@@ -213,6 +213,46 @@ object JamManager {
         return name.replace("_", " ").trim().ifBlank { "Listener" }
     }
 
+    fun deduplicateParticipants(list: List<Participant>, currentUserId: String? = null): List<Participant> {
+        val result = mutableListOf<Participant>()
+        val seenNames = mutableSetOf<String>()
+        val seenIds = mutableSetOf<String>()
+        val selfId = currentUserId ?: ""
+
+        // 1. Host first
+        val host = list.find { it.isHost }
+        if (host != null) {
+            result.add(host)
+            seenIds.add(host.userId)
+            val hName = sanitizeDisplayName(host.name).lowercase()
+            if (hName != "listener") seenNames.add(hName)
+        }
+
+        // 2. Current user next (if not host)
+        if (selfId.isNotBlank()) {
+            val self = list.find { it.userId == selfId && it.userId !in seenIds }
+            if (self != null) {
+                result.add(self)
+                seenIds.add(self.userId)
+                val sName = sanitizeDisplayName(self.name).lowercase()
+                if (sName != "listener") seenNames.add(sName)
+            }
+        }
+
+        // 3. Other unique participants
+        for (p in list) {
+            if (p.userId in seenIds) continue
+            val n = sanitizeDisplayName(p.name).lowercase()
+            if (n != "listener" && seenNames.contains(n)) {
+                continue // omit ghost reconnect duplicate
+            }
+            if (n != "listener") seenNames.add(n)
+            seenIds.add(p.userId)
+            result.add(p)
+        }
+        return result
+    }
+
     fun createJam(name: String, collaborative: Boolean = true) {
         userInitiatedLeave = false
         reconnectJob?.cancel()
@@ -269,7 +309,7 @@ object JamManager {
         if (!state.isConnected || !state.isHost) return
         val mode = if (collaborative) JamConstants.MODE_COLLABORATIVE else JamConstants.MODE_HOST_ONLY
         val payload = json.encodeToJsonElement(ChangeRoomModeRequest(roomMode = mode))
-        sendEnvelope(JamEnvelope(type = JamConstants.MSG_ROOM_MODE_CHANGED, payload = payload))
+        sendEnvelope(JamEnvelope(type = JamConstants.MSG_CHANGE_ROOM_MODE, payload = payload))
         _uiState.value = state.copy(roomMode = mode)
     }
 
@@ -476,6 +516,8 @@ object JamManager {
                     } ?: return
 
                     val hostName = payload.participants.find { it.isHost || it.userId == payload.hostId }?.name ?: "Host"
+                    val isHost = payload.isHost || (_uiState.value.isHost && (payload.userId == payload.hostId || sanitizeDisplayName(payload.name).equals(sanitizeDisplayName(hostName), ignoreCase = true)))
+                    val deduped = deduplicateParticipants(payload.participants, payload.userId)
 
                     _uiState.value = _uiState.value.copy(
                         isConnecting = false,
@@ -483,11 +525,11 @@ object JamManager {
                         roomCode = payload.roomCode,
                         userId = payload.userId,
                         userName = payload.name,
-                        isHost = payload.isHost,
+                        isHost = isHost,
                         hostName = hostName,
                         roomMode = payload.roomMode,
-                        participants = payload.participants,
-                        totalUsers = payload.participants.size,
+                        participants = deduped,
+                        totalUsers = deduped.size,
                         queue = payload.playback.queue,
                         currentTrack = payload.playback.currentTrack,
                         isPlaying = payload.playback.isPlaying,
@@ -495,7 +537,7 @@ object JamManager {
                         errorMessage = null
                     )
 
-                    if (!payload.isHost) {
+                    if (!isHost) {
                         applyRemotePlayback(
                             action = JamConstants.ACTION_CHANGE_TRACK,
                             track = payload.playback.currentTrack,
@@ -517,11 +559,11 @@ object JamManager {
                         isCoHost = payload.isCoHost,
                         joinedAt = System.currentTimeMillis()
                     )
-                    val updated = _uiState.value.participants.filter { it.userId != p.userId } + p
-                    val count = if (payload.totalUsers > 0) payload.totalUsers else updated.size
+                    val raw = _uiState.value.participants.filter { it.userId != p.userId } + p
+                    val deduped = deduplicateParticipants(raw, _uiState.value.userId)
                     _uiState.value = _uiState.value.copy(
-                        participants = updated,
-                        totalUsers = count
+                        participants = deduped,
+                        totalUsers = deduped.size
                     )
                 }
 
@@ -529,11 +571,11 @@ object JamManager {
                     val payload = envelope.payload?.let {
                         json.decodeFromJsonElement<UserLeftPayload>(it)
                     } ?: return
-                    val updated = _uiState.value.participants.filter { it.userId != payload.userId }
-                    val count = if (payload.totalUsers > 0) payload.totalUsers else updated.size
+                    val raw = _uiState.value.participants.filter { it.userId != payload.userId }
+                    val deduped = deduplicateParticipants(raw, _uiState.value.userId)
                     _uiState.value = _uiState.value.copy(
-                        participants = updated,
-                        totalUsers = count
+                        participants = deduped,
+                        totalUsers = deduped.size
                     )
                 }
 
@@ -543,12 +585,14 @@ object JamManager {
                     } ?: return
                     val isSelf = payload.newHostId == _uiState.value.userId
                     val updatedParticipants = _uiState.value.participants.map {
-                        it.copy(isHost = it.userId == payload.newHostId)
+                        it.copy(isHost = it.userId == payload.newHostId || sanitizeDisplayName(it.name).equals(sanitizeDisplayName(payload.newHostName), ignoreCase = true))
                     }
+                    val deduped = deduplicateParticipants(updatedParticipants, _uiState.value.userId)
                     _uiState.value = _uiState.value.copy(
-                        isHost = isSelf,
+                        isHost = isSelf || (_uiState.value.isHost && sanitizeDisplayName(_uiState.value.userName).equals(sanitizeDisplayName(payload.newHostName), ignoreCase = true)),
                         hostName = payload.newHostName.ifBlank { payload.name },
-                        participants = updatedParticipants
+                        participants = deduped,
+                        totalUsers = deduped.size
                     )
                 }
 

@@ -25,6 +25,7 @@ object JamConstants {
     const val MSG_QUEUE_UPDATED = "queue_updated"
     const val MSG_HOST_CHANGED = "host_changed"
     const val MSG_ROOM_MODE_CHANGED = "room_mode_changed"
+    const val MSG_CHANGE_ROOM_MODE = "change_room_mode"
     const val MSG_ERROR = "error"
 
     const val ACTION_PLAY = "play"

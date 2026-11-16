@@ -603,6 +603,73 @@ fun WouJamSheet(
                     }
                 }
 
+                // Collaborative Mode Settings
+                item {
+                    Surface(
+                        shape = RoundedCornerShape(16.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 10.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 14.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = stringResource(R.string.jam_collaborative),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                                Text(
+                                    text = if (jamState.isHost) {
+                                        if (jamState.roomMode == JamConstants.MODE_COLLABORATIVE)
+                                            "Guests can pause, seek, and add songs"
+                                        else
+                                            "Only host can manage playback and queue"
+                                    } else {
+                                        if (jamState.roomMode == JamConstants.MODE_COLLABORATIVE)
+                                            "Everyone can add songs and control playback"
+                                        else
+                                            "Only host can manage playback and queue"
+                                    },
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            if (jamState.isHost) {
+                                Switch(
+                                    checked = jamState.roomMode == JamConstants.MODE_COLLABORATIVE,
+                                    onCheckedChange = { JamManager.setRoomMode(it) }
+                                )
+                            } else {
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = if (jamState.roomMode == JamConstants.MODE_COLLABORATIVE)
+                                        MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                                    else
+                                        MaterialTheme.colorScheme.surfaceVariant
+                                ) {
+                                    Text(
+                                        text = if (jamState.roomMode == JamConstants.MODE_COLLABORATIVE) "Shared" else "Host Only",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = if (jamState.roomMode == JamConstants.MODE_COLLABORATIVE)
+                                            MaterialTheme.colorScheme.primary
+                                        else
+                                            MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
                 // Upcoming Jam Queue
                 item {
                     Row(
@@ -794,42 +861,6 @@ fun WouJamSheet(
                                     fontWeight = FontWeight.SemiBold,
                                     color = MaterialTheme.colorScheme.onSecondaryContainer,
                                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
-                                )
-                            }
-                        }
-                    }
-                }
-
-                // If host: collaborative switch
-                if (jamState.isHost) {
-                    item {
-                        Surface(
-                            shape = RoundedCornerShape(16.dp),
-                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(14.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = stringResource(R.string.jam_collaborative),
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        fontWeight = FontWeight.Medium
-                                    )
-                                    Text(
-                                        text = stringResource(R.string.jam_collaborative_desc),
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                                Switch(
-                                    checked = jamState.roomMode == JamConstants.MODE_COLLABORATIVE,
-                                    onCheckedChange = { JamManager.setRoomMode(it) }
                                 )
                             }
                         }
