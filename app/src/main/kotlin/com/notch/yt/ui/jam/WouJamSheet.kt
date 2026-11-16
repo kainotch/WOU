@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -646,7 +647,7 @@ fun WouJamSheet(
                         }
                     }
                 } else {
-                    items(jamState.queue, key = { it.id + "_" + jamState.queue.indexOf(it) }) { track ->
+                    itemsIndexed(jamState.queue, key = { index, track -> "jam_q_${track.id}_$index" }) { _, track ->
                         Surface(
                             shape = RoundedCornerShape(12.dp),
                             color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f),
@@ -732,7 +733,7 @@ fun WouJamSheet(
                     )
                 }
 
-                items(jamState.participants, key = { it.userId }) { p ->
+                itemsIndexed(jamState.participants, key = { index, p -> "jam_p_${p.userId}_$index" }) { _, p ->
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
