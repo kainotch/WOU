@@ -285,6 +285,10 @@ private fun SearchBarInputField(
                         val upEvent = waitForUpOrCancellation(pass = PointerEventPass.Initial)
                         if (upEvent != null) {
                             onActiveChange(true)
+                            try {
+                                focusRequester.requestFocus()
+                            } catch (_: Exception) {
+                            }
                         }
                     }
                 }

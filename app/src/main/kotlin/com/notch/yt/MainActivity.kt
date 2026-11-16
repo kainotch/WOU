@@ -879,7 +879,6 @@ class MainActivity : ComponentActivity() {
                         if (active) {
                             searchBarScrollBehavior.state.resetHeightOffset()
                             topAppBarScrollBehavior.state.resetHeightOffset()
-                            searchBarFocusRequester.requestFocus()
                         }
                     }
 
@@ -1413,13 +1412,6 @@ class MainActivity : ComponentActivity() {
                                                     if (screen.route == Screens.Search.route) {
                                                         if (!active) {
                                                             onActiveChange(true)
-                                                            coroutineScope.launch {
-                                                                delay(100)
-                                                                try {
-                                                                    searchBarFocusRequester.requestFocus()
-                                                                } catch (_: Exception) {
-                                                                }
-                                                            }
                                                         }
                                                     } else {
                                                         if (active) {

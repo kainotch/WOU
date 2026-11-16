@@ -53,6 +53,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -80,6 +81,8 @@ import com.notch.yt.constants.SearchFilterHeight
 import com.notch.yt.extensions.togglePlayPause
 import com.notch.yt.models.toMediaMetadata
 import com.notch.yt.playback.queues.YouTubeQueue
+import com.notch.yt.utils.RecentSearchStorage
+import com.notch.yt.utils.RecentSearchSong
 import com.notch.yt.ui.component.ChipsRow
 import com.notch.yt.ui.component.EmptyPlaceholder
 import com.notch.yt.ui.component.LocalMenuState
@@ -99,6 +102,7 @@ fun OnlineSearchResult(
     navController: NavController,
     viewModel: OnlineSearchViewModel = hiltViewModel(),
 ) {
+    val context = LocalContext.current
     val menuState = LocalMenuState.current
     val playerConnection = LocalPlayerConnection.current ?: return
     val haptic = LocalHapticFeedback.current
@@ -207,6 +211,15 @@ fun OnlineSearchResult(
                     onClick = {
                         when (item) {
                             is SongItem -> {
+                                RecentSearchStorage.saveClickedSong(
+                                    context,
+                                    RecentSearchSong(
+                                        id = item.id,
+                                        title = item.title,
+                                        artist = item.artists.joinToString { it.name },
+                                        thumbnailUrl = item.thumbnail
+                                    )
+                                )
                                 if (item.id == mediaMetadata?.id) {
                                     playerConnection.player.togglePlayPause()
                                 } else {
