@@ -68,7 +68,9 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.analytics.AnalyticsListener
 import androidx.media3.exoplayer.analytics.PlaybackStats
 import androidx.media3.exoplayer.analytics.PlaybackStatsListener
+import androidx.media3.exoplayer.audio.AudioSink
 import androidx.media3.exoplayer.audio.DefaultAudioSink
+import androidx.media3.exoplayer.audio.DefaultAudioTrackBufferSizeProvider
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.source.ShuffleOrder.DefaultShuffleOrder
 import androidx.media3.extractor.ExtractorsFactory
@@ -3264,7 +3266,7 @@ class MusicService :
             )
     }
 
-    private fun releaseAudioEffects() {
+    private fun releaseAudioEffects(clearCapabilities: Boolean = false) {
         audioEffectsSessionId = null
         try {
             equalizer?.release()
@@ -3286,14 +3288,33 @@ class MusicService :
         bassBoost = null
         virtualizer = null
         loudnessEnhancer = null
-        eqCapabilities.value = null
+        if (clearCapabilities) {
+            eqCapabilities.value = null
+        }
     }
 
     private fun ensureAudioEffects(sessionId: Int) {
         if (sessionId <= 0) return
+        val settings = desiredEqSettings.value
+        val hasAnyEffectEnabled =
+            settings.enabled || settings.bassBoostEnabled || settings.virtualizerEnabled || settings.outputGainEnabled
+
+        if (eqCapabilities.value == null) {
+            runCatching {
+                val tempEq = Equalizer(0, sessionId)
+                updateEqCapabilitiesFromEffect(tempEq)
+                tempEq.release()
+            }
+        }
+
+        if (!hasAnyEffectEnabled) {
+            releaseAudioEffects(clearCapabilities = false)
+            return
+        }
+
         if (audioEffectsSessionId == sessionId && equalizer != null) return
 
-        releaseAudioEffects()
+        releaseAudioEffects(clearCapabilities = false)
         audioEffectsSessionId = sessionId
 
         equalizer = runCatching { Equalizer(0, sessionId) }.getOrNull()
@@ -3301,8 +3322,7 @@ class MusicService :
         virtualizer = runCatching { Virtualizer(0, sessionId) }.getOrNull()
         loudnessEnhancer = runCatching { LoudnessEnhancer(sessionId) }.getOrNull()
 
-        equalizer?.let(::updateEqCapabilitiesFromEffect)
-        applyEqSettingsToEffects(desiredEqSettings.value)
+        applyEqSettingsToEffects(settings)
     }
 
     private fun applyEqSettingsToEffects(settings: EqSettings) {
@@ -3358,7 +3378,7 @@ class MusicService :
         isAudioEffectSessionOpened = false
         val sessionId = openedAudioSessionId ?: player.audioSessionId
         openedAudioSessionId = null
-        releaseAudioEffects()
+        releaseAudioEffects(clearCapabilities = false)
         if (sessionId <= 0) return
         sendBroadcast(
             Intent(AudioEffect.ACTION_CLOSE_AUDIO_EFFECT_CONTROL_SESSION).apply {
@@ -3729,7 +3749,7 @@ class MusicService :
         if (isBufferingOrReady && player.playWhenReady) {
             val focusGranted = requestAudioFocus()
             if (focusGranted) openAudioEffectSession()
-        } else {
+        } else if (player.playbackState == Player.STATE_IDLE || player.playbackState == Player.STATE_ENDED) {
             closeAudioEffectSession()
         }
     }
@@ -4306,8 +4326,8 @@ class MusicService :
             .setBufferDurationsMs(
                 30_000,
                 60_000,
-                1_500,
-                3_000,
+                2_500,
+                5_000,
             )
             .setPrioritizeTimeOverSizeThresholds(true)
             .build()
@@ -4345,7 +4365,26 @@ class MusicService :
         player.setOffloadEnabled(enabled)
     }
 
-    private fun createRenderersFactory() = DefaultRenderersFactory(this)
+    private fun createRenderersFactory() =
+        object : DefaultRenderersFactory(this) {
+            override fun buildAudioSink(
+                context: Context,
+                enableFloatOutput: Boolean,
+                enableAudioTrackPlaybackParams: Boolean,
+            ): AudioSink {
+                return DefaultAudioSink.Builder(context)
+                    .setEnableFloatOutput(true)
+                    .setEnableAudioTrackPlaybackParams(enableAudioTrackPlaybackParams)
+                    .setAudioTrackBufferSizeProvider(
+                        DefaultAudioTrackBufferSizeProvider.Builder()
+                            .setMinPcmBufferDurationUs(1_000_000)
+                            .setMaxPcmBufferDurationUs(2_500_000)
+                            .setPcmBufferMultiplicationFactor(4)
+                            .build()
+                    )
+                    .build()
+            }
+        }
 
     override fun onPlaybackStatsReady(
         eventTime: AnalyticsListener.EventTime,

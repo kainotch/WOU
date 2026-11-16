@@ -479,14 +479,14 @@ object YTPlayerUtils {
             }
 
         val preferHigher =
-            compareByDescending<PlayerResponse.StreamingData.Format> { it.bitrate }
-                .thenByDescending { codecRank(extractCodec(it.mimeType)) }
+            compareByDescending<PlayerResponse.StreamingData.Format> { codecRank(extractCodec(it.mimeType)) }
+                .thenByDescending { it.bitrate }
                 .thenByDescending { it.audioSampleRate ?: 0 }
                 .thenByDescending { it.url != null }
 
         val preferLowerAboveTarget =
-            compareBy<PlayerResponse.StreamingData.Format> { it.bitrate }
-                .thenByDescending { codecRank(extractCodec(it.mimeType)) }
+            compareByDescending<PlayerResponse.StreamingData.Format> { codecRank(extractCodec(it.mimeType)) }
+                .thenBy { it.bitrate }
                 .thenByDescending { it.audioSampleRate ?: 0 }
                 .thenByDescending { it.url != null }
 
