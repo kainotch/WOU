@@ -28,9 +28,9 @@ class DiscordRPC(
     companion object {
         private const val APPLICATION_ID = "1165706613961789445"
         private const val PAUSE_IMAGE_URL =
-            "mp:external/j7lM8fcrUeVxjy_zevW84SvduUFswUx2ksMTvAsFRxs/https/raw.githubusercontent.com/notchvishwakarma00/wou/main/fastlane/metadata/android/en-US/images/RPC/pause_icon.png"
+            "mp:external/5fs4qAJvHUnOixpejvI6D3P3QI0ubhmCYSWfIOjA5CE/https/raw.githubusercontent.com/kainotch/WOU/main/fastlane/metadata/android/en-US/images/RPC/pause_icon.png"
         private const val APP_ICON_URL = 
-            "mp:external/ju4GXikq2zL0nQlWUIssabULT7Z4g-H5hoxLHIb7grw/https/raw.githubusercontent.com/notchvishwakarma00/wou/main/fastlane/metadata/android/en-US/images/icon.png"
+            "mp:external/hWW0ZzADO8ayUh1lzGgT4RE4I7V0JUrZRPFB8OUUdSs/https/raw.githubusercontent.com/kainotch/WOU/main/fastlane/metadata/android/en-US/images/icon.png"
         private const val logtag = "DiscordRPC"
     }
 
@@ -206,7 +206,7 @@ class DiscordRPC(
         val button1UrlSource = context.dataStore[DiscordActivityButton1UrlSourceKey] ?: "songurl"
         val button1CustomUrl = context.dataStore[DiscordActivityButton1CustomUrlKey] ?: ""
         val button2UrlSource = context.dataStore[DiscordActivityButton2UrlSourceKey] ?: "custom"
-        val button2CustomUrl = context.dataStore[DiscordActivityButton2CustomUrlKey] ?: "https://github.com/notchvishwakarma00/wou"
+        val button2CustomUrl = context.dataStore[DiscordActivityButton2CustomUrlKey] ?: "https://github.com/kainotch/WOU"
 
         val resolvedButton1Url = resolveUrl(button1UrlSource, song, button1CustomUrl)
         val resolvedButton2Url = resolveUrl(button2UrlSource, song, button2CustomUrl)
