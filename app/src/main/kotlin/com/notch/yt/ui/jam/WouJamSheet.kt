@@ -34,6 +34,8 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -75,6 +77,7 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.notch.yt.LocalPlayerConnection
 import com.notch.yt.R
+import com.notch.yt.ui.component.MediaMetadataListItem
 import com.notch.yt.constants.AccountNameKey
 import com.notch.yt.constants.DiscordNameKey
 import com.notch.yt.constants.JamDisplayNameKey
@@ -137,7 +140,7 @@ fun WouJamSheet(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 8.dp)
+            .padding(horizontal = 10.dp, vertical = 8.dp)
             .padding(bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding())
     ) {
         // Top Header
@@ -530,75 +533,42 @@ fun WouJamSheet(
                     }
                 }
 
-                // Currently Syncing Song
+                // Currently Playing Song
                 item {
                     val track = jamState.currentTrack ?: playerConnection?.mediaMetadata?.value?.toTrackInfo()
                     if (track != null) {
-                        Surface(
-                            shape = RoundedCornerShape(16.dp),
-                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
-                            modifier = Modifier.fillMaxWidth()
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 10.dp)
                         ) {
-                            Row(
-                                modifier = Modifier.padding(12.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                if (!track.artworkUrl.isNullOrBlank()) {
-                                    AsyncImage(
-                                        model = track.artworkUrl,
-                                        contentDescription = null,
-                                        contentScale = ContentScale.Crop,
-                                        modifier = Modifier
-                                            .size(48.dp)
-                                            .clip(RoundedCornerShape(8.dp))
-                                    )
-                                } else {
+                            Text(
+                                text = "Now Playing",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp)
+                            )
+                            MediaMetadataListItem(
+                                mediaMetadata = track.toMediaMetadata(),
+                                isActive = true,
+                                isPlaying = jamState.isPlaying,
+                                trailingContent = {
                                     Surface(
                                         shape = RoundedCornerShape(8.dp),
-                                        color = MaterialTheme.colorScheme.primaryContainer,
-                                        modifier = Modifier.size(48.dp)
+                                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
                                     ) {
-                                        Box(contentAlignment = Alignment.Center) {
-                                            Icon(
-                                                painter = painterResource(R.drawable.music_note),
-                                                contentDescription = null,
-                                                tint = MaterialTheme.colorScheme.onPrimaryContainer
-                                            )
-                                        }
+                                        Text(
+                                            text = if (jamState.isPlaying) "Playing" else "Paused",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                        )
                                     }
-                                }
-
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = track.title,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        fontWeight = FontWeight.SemiBold,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                    Text(
-                                        text = track.artist,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                }
-
-                                Surface(
-                                    shape = RoundedCornerShape(8.dp),
-                                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
-                                ) {
-                                    Text(
-                                        text = if (jamState.isPlaying) "Playing" else "Paused",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                                    )
-                                }
-                            }
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            )
                         }
                     }
                 }
@@ -670,21 +640,28 @@ fun WouJamSheet(
                     }
                 }
 
-                // Upcoming Jam Queue
+                // Jam Queue Header
                 item {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(top = 10.dp),
+                            .padding(horizontal = 4.dp, vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text(
-                            text = "Jam Queue (${jamState.queue.size})",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        Column {
+                            Text(
+                                text = "Jam Queue",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                text = if (jamState.queue.isEmpty()) "Queue is empty" else "${jamState.queue.size} songs playing next",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                            )
+                        }
 
                         if (jamState.queue.isNotEmpty() && (jamState.isHost || jamState.roomMode == JamConstants.MODE_COLLABORATIVE)) {
                             TextButton(onClick = { JamManager.clearQueue() }) {
@@ -702,8 +679,10 @@ fun WouJamSheet(
                     item {
                         Surface(
                             shape = RoundedCornerShape(14.dp),
-                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-                            modifier = Modifier.fillMaxWidth()
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 4.dp, vertical = 4.dp)
                         ) {
                             Text(
                                 text = "Queue is empty. Songs added to queue will sync here for everyone.",
@@ -715,76 +694,69 @@ fun WouJamSheet(
                     }
                 } else {
                     itemsIndexed(jamState.queue, key = { index, track -> "jam_q_${track.id}_$index" }) { _, track ->
-                        Surface(
-                            shape = RoundedCornerShape(12.dp),
-                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 2.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(10.dp)
-                            ) {
-                                if (!track.artworkUrl.isNullOrBlank()) {
-                                    AsyncImage(
-                                        model = track.artworkUrl,
-                                        contentDescription = null,
-                                        contentScale = ContentScale.Crop,
-                                        modifier = Modifier
-                                            .size(38.dp)
-                                            .clip(RoundedCornerShape(6.dp))
-                                    )
-                                } else {
-                                    Surface(
-                                        shape = RoundedCornerShape(6.dp),
-                                        color = MaterialTheme.colorScheme.primaryContainer,
-                                        modifier = Modifier.size(38.dp)
+                        var menuExpanded by remember { mutableStateOf(false) }
+
+                        MediaMetadataListItem(
+                            mediaMetadata = track.toMediaMetadata(),
+                            isActive = false,
+                            isPlaying = false,
+                            trailingContent = {
+                                Box {
+                                    IconButton(
+                                        onClick = { menuExpanded = true },
+                                        modifier = Modifier.size(36.dp)
                                     ) {
-                                        Box(contentAlignment = Alignment.Center) {
-                                            Icon(
-                                                painter = painterResource(R.drawable.music_note),
-                                                contentDescription = null,
-                                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                                modifier = Modifier.size(18.dp)
+                                        Icon(
+                                            painter = painterResource(R.drawable.more_vert),
+                                            contentDescription = "Options",
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+
+                                    DropdownMenu(
+                                        expanded = menuExpanded,
+                                        onDismissRequest = { menuExpanded = false }
+                                    ) {
+                                        if (jamState.isHost || jamState.roomMode == JamConstants.MODE_COLLABORATIVE) {
+                                            DropdownMenuItem(
+                                                text = { Text("Play Now") },
+                                                leadingIcon = {
+                                                    Icon(
+                                                        painter = painterResource(R.drawable.play),
+                                                        contentDescription = null,
+                                                        modifier = Modifier.size(20.dp)
+                                                    )
+                                                },
+                                                onClick = {
+                                                    menuExpanded = false
+                                                    JamManager.sendPlaybackAction(JamConstants.ACTION_CHANGE_TRACK, track)
+                                                }
+                                            )
+                                            DropdownMenuItem(
+                                                text = { Text("Remove from Queue") },
+                                                leadingIcon = {
+                                                    Icon(
+                                                        painter = painterResource(R.drawable.delete),
+                                                        contentDescription = null,
+                                                        modifier = Modifier.size(20.dp),
+                                                        tint = MaterialTheme.colorScheme.error
+                                                    )
+                                                },
+                                                onClick = {
+                                                    menuExpanded = false
+                                                    JamManager.removeFromQueue(track)
+                                                }
                                             )
                                         }
                                     }
                                 }
-
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = track.title,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        fontWeight = FontWeight.Medium,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                    Text(
-                                        text = track.artist,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable(enabled = jamState.isHost || jamState.roomMode == JamConstants.MODE_COLLABORATIVE) {
+                                    JamManager.sendPlaybackAction(JamConstants.ACTION_CHANGE_TRACK, track)
                                 }
-
-                                if (jamState.isHost || jamState.roomMode == JamConstants.MODE_COLLABORATIVE) {
-                                    IconButton(
-                                        onClick = { JamManager.removeFromQueue(track) },
-                                        modifier = Modifier.size(28.dp)
-                                    ) {
-                                        Icon(
-                                            painter = painterResource(R.drawable.close),
-                                            contentDescription = "Remove",
-                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            modifier = Modifier.size(16.dp)
-                                        )
-                                    }
-                                }
-                            }
-                        }
+                        )
                     }
                 }
 
