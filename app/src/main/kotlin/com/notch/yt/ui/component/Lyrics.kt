@@ -813,7 +813,24 @@ fun Lyrics(
             .padding(bottom = 12.dp)
     ) {
 
-        val hasNoVisibleLyrics = lyrics == LYRICS_NOT_FOUND || (lyrics != null && lines.none { it.text.isNotBlank() })
+        if (lyrics == null) {
+            ShimmerHost(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp, vertical = 32.dp)
+            ) {
+                repeat(8) {
+                    TextPlaceholder(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp)
+                    )
+                }
+            }
+            return@BoxWithConstraints
+        }
+
+        val hasNoVisibleLyrics = lyrics == LYRICS_NOT_FOUND || lines.none { it.text.isNotBlank() }
         if (hasNoVisibleLyrics) {
             Box(
                 modifier = Modifier.fillMaxSize(),
@@ -827,8 +844,10 @@ fun Lyrics(
                     fontWeight = FontWeight.Bold,
                 )
             }
-        } else {
-            LazyColumn(
+            return@BoxWithConstraints
+        }
+
+        LazyColumn(
             state = lazyListState,
             contentPadding = WindowInsets.systemBars
                 .only(WindowInsetsSides.Top)
@@ -872,31 +891,11 @@ fun Lyrics(
             val displayedCurrentLineIndex =
                 if (isSeeking || isSelectionModeActive) deferredCurrentLineIndex else currentLineIndex
 
-            if (lyrics == null) {
-                item {
-                    ShimmerHost {
-                        repeat(10) {
-                            Box(
-                                contentAlignment = when (lyricsTextPosition) {
-                                    LyricsPosition.LEFT -> Alignment.CenterStart
-                                    LyricsPosition.CENTER -> Alignment.Center
-                                    LyricsPosition.RIGHT -> Alignment.CenterEnd
-                                },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 24.dp, vertical = 4.dp)
-                            ) {
-                                TextPlaceholder()
-                            }
-                        }
-                    }
-                }
-            } else {
-                itemsIndexed(
-                    items = lines,
-                    key = { index, item -> "${index}_${item.time}_${item.text.hashCode()}" }, // Stable keys for better recycling
-                    contentType = { _, _ -> "lyric_line" } // Enables better item recycling
-                ) { index, item ->
+            itemsIndexed(
+                items = lines,
+                key = { index, item -> "${index}_${item.time}_${item.text.hashCode()}" }, // Stable keys for better recycling
+                contentType = { _, _ -> "lyric_line" } // Enables better item recycling
+            ) { index, item ->
                     val isSelected = selectedIndices.contains(index)
 
                     val distance = abs(index - displayedCurrentLineIndex)
@@ -2095,7 +2094,6 @@ fun Lyrics(
                     }
                 }
             }
-        }
 
             AnimatedVisibility(
                 visible = isManualScrolling && scrollLyrics && !isSelectionModeActive,
@@ -2557,7 +2555,6 @@ fun Lyrics(
                 }
             }
         }
-        } 
     }
 }
 
